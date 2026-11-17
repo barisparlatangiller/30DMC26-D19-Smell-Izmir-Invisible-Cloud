@@ -120,7 +120,7 @@ def odour_atlas():
     for mm in ST["days_order"]:
         d = W / "odour" / mm
         for sc in ("b", "o"):
-            tiles = [np.asarray(Image.open(d / f"{sc}_{h:02d}.png")) for h in range(24)]
+            tiles = [np.asarray(Image.open(B / "odour" / mm / f"{sc}_{h:02d}.png")) for h in range(24)]
             th, tw = tiles[0].shape
             at = np.zeros((th * 4, tw * 6), np.uint8)
             for h, t in enumerate(tiles):
@@ -200,7 +200,7 @@ def linger():
     fr = ndi.zoom(T["frac"], RES / G["G"], order=1)[:G["NY"], :G["NX"]] > 0.3
     out = {}
     for mm in ST["days_order"]:
-        a = [sum((np.asarray(Image.open(W / "odour" / mm / f"{sc}_{h:02d}.png")).astype(float) / 255) ** 2 for h in range(24)) for sc in ("b", "o")]
+        a = [sum((np.asarray(Image.open(B / "odour" / mm / f"{sc}_{h:02d}.png")).astype(float) / 255) ** 2 for h in range(24)) for sc in ("b", "o")]
         out[mm] = round(float(a[0][fr].sum() / max(a[1][fr].sum(), 1e-9)), 3)
     return out
 

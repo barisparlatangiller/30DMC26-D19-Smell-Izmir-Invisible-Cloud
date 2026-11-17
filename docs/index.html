@@ -43,8 +43,8 @@
       <p class="lede">On a hot July afternoon the <b>imbat</b>, the sea breeze from the north-west, picks up the smell of the <b>inner gulf</b>, a <b>wastewater plant</b> and a <b>landfill</b> and pushes it into the city. Where does it go, hour by hour?</p>
     </header>
     <div class="stats">
-      <div class="st"><b class="mono">75,437</b><span>buildings inside the cloud for 4 h or more on 21 July</span></div>
-      <div class="st"><b class="mono">78%</b><span>of buildings get at least one odour hour on one of the 12 sample days</span></div>
+      <div class="st"><b class="mono">79,833</b><span>buildings inside the cloud for 4 h or more on 21 July</span></div>
+      <div class="st"><b class="mono">77%</b><span>of buildings get at least one odour hour on one of the 12 sample days</span></div>
       <div class="st"><b class="mono">+6%</b><span>more odour lingers in dense blocks when buildings slow the wind (21 July)</span></div>
     </div>
 
@@ -70,8 +70,14 @@
         <label><input type="checkbox" id="tSl"><span>Slope</span><em>steeper = lighter</em></label>
         <label><input type="checkbox" id="tSo" checked><span>Sources</span><em>candidate odour sources</em></label>
       </div>
-      <div class="sl"><span>Cloud</span><input type="range" id="rOp" min="0.2" max="1" step="0.01" value="0.75"><b class="mono" id="opO">75%</b></div>
+      <div class="sl"><span>Cloud</span><input type="range" id="rOp" min="0.2" max="1" step="0.01" value="0.85"><b class="mono" id="opO">85%</b></div>
       <div class="sl"><span>Relief</span><input type="range" id="rEx" min="1" max="3" step="0.1" value="1.6"><b class="mono" id="exv">1.6×</b></div>
+    </section>
+
+    <section class="block">
+      <h2 class="label">Districts · odour hours per day</h2>
+      <ul class="rank" id="dist"></ul>
+      <p class="hint">Average of the 12 sample days, per building, with buildings. Share = buildings with 4 h or more on an average day.</p>
     </section>
 
     <section class="block">
@@ -94,7 +100,7 @@
     </details>
     <details class="howto">
       <summary>Sources</summary>
-      <ol class="refs"><li>Wind &amp; weather: <a href="https://open-meteo.com/">Open-Meteo</a> historical API, 38.49 N 27.11 E (CC BY 4.0).</li><li>Terrain: Copernicus DEM GLO-30, © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018, provided under COPERNICUS by the European Union and ESA.</li><li>Building height: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, European Commission JRC.</li><li>Buildings, trees, streams, roads, neighbourhoods: © OpenStreetMap contributors, ODbL.</li><li>Gulf water quality stations and air-quality context: İzmir Büyükşehir Belediyesi Açık Veri Portalı.</li></ol>
+      <ol class="refs"><li>Wind &amp; weather: <a href="https://open-meteo.com/">Open-Meteo</a> historical API, 38.49 N 27.11 E (CC BY 4.0).</li><li>Terrain: Copernicus DEM GLO-30, © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018, provided under COPERNICUS by the European Union and ESA.</li><li>Building height: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, European Commission JRC.</li><li>Buildings, trees, streams, roads, neighbourhoods: © OpenStreetMap contributors, ODbL.</li><li>Gulf water quality stations and air-quality context: İzmir Büyükşehir Belediyesi Açık Veri Portalı.</li><li>District boundaries: geoBoundaries ADM2 Türkiye (Runfola et al. 2020), from OpenStreetMap, ODbL.</li></ol>
     </details>
     <footer class="foot"><p>Barış Parlatangiller · <a href="https://barisparlatangiller.github.io/">all 30 maps</a> · <a href="https://github.com/barisparlatangiller/30DMC26-D19-Smell-Izmir-Invisible-Cloud">code &amp; method</a> · built with AI assistance (Claude, Anthropic)</p></footer>
   </aside>

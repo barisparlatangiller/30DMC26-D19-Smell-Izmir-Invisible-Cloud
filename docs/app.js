@@ -16,7 +16,7 @@ const ODOUR = [[0,'#f6f0b8'],[0.35,'#f0dc72'],[0.6,'#e3c44a'],[0.85,'#b39a36'],[
 const fmt = n => n.toLocaleString(TR ? 'tr-TR' : 'en-GB');
 
 if (FILM) { let a = 19190721; Math.random = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const S = { day: Q.get('day') || '07', scen: 'b', h: +(Q.get('h') || 15), play: false, ex: 1.6, op: 0.75, t: 0 };
+const S = { day: Q.get('day') || '07', scen: 'b', h: +(Q.get('h') || 15), play: false, ex: 1.6, op: 0.85, t: 0 };
 window.S = S;
 
 // ---------- helpers ----------
@@ -158,7 +158,7 @@ const terrainMat = new THREE.ShaderMaterial({
       else col*=0.92+0.1*lam;
       if(showSlope>0.5 && sea<0.5){ float s=smoothstep(4.,30.,sl); col=mix(col,mix(vec3(0.36,0.42,0.58),vec3(0.86,0.84,0.92),s),0.18+0.5*s); }
       float o=odour(vUv);
-      col=mix(col,odRamp(o)*0.85,clamp(o*1.1,0.,0.55)*tint);
+      col=mix(col,odRamp(o)*0.9,clamp(o*1.3,0.,0.62)*tint);
       col=mix(col,fogC,smoothstep(0.,1.,vD/fogD)*0.85);
       gl_FragColor=vec4(col,1.);
       #include <colorspace_fragment>
@@ -178,7 +178,7 @@ const terrain = new THREE.Mesh(TG.g, terrainMat); world.add(terrain);
   for (let i = 0; i < edge.length-1; i++) {
     const a = edge[i], b = edge[i+1], ax = P[a*3], ay = P[a*3+1], az = P[a*3+2], bx = P[b*3], by = P[b*3+1], bz = P[b*3+2];
     pos.push(ax,ay,az, bx,by,bz, ax,lo,az,  bx,by,bz, bx,lo,bz, ax,lo,az);
-    for (const y of [ay,by,lo,by,lo,lo]) { const t = y <= lo ? 0.08 : (y < 0.5 ? 0.16 : 0.2); col.push(t*0.95, t*1.05, t*1.35); }
+    for (const y of [ay,by,lo,by,lo,lo]) { const t = y <= lo ? 0.05 : 0.11; col.push(t*0.95, t*1.05, t*1.4); }
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   world.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })));
@@ -254,7 +254,7 @@ const cloudMat = new THREE.ShaderMaterial({
       float m=fbm(P - drift*t*0.9 + layerA*3.1), m2=fbm(P*2.3 - drift*t*1.6 + 9.2);
       float d=smoothstep(0.012,0.5,vO);
       vec3 c=odR(clamp(vO*1.15,0.,1.))*(0.9+0.2*m);
-      float a=op*layerA*d*(0.35+0.75*m*m2*1.6);
+      float a=op*layerA*d*(0.5+1.1*m*m2);
       c=mix(c,fogC,smoothstep(0.,1.,vD/fogD)*0.8);
       gl_FragColor=vec4(c,clamp(a,0.,0.85));
       #include <colorspace_fragment>
@@ -300,14 +300,14 @@ const pGeo = new THREE.BufferGeometry();
 pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3).setUsage(THREE.DynamicDrawUsage));
 pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 4).setUsage(THREE.DynamicDrawUsage));
 pGeo.setAttribute('size', new THREE.BufferAttribute(pSize, 1).setUsage(THREE.DynamicDrawUsage));
-const pMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { scale: { value: 1 } },
+const pMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { scale: { value: 1 } },
   vertexShader: `attribute vec4 color; attribute float size; uniform float scale; varying vec4 vC;
     void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize=clamp(size*scale/-mv.z,1.5,7.); gl_Position=projectionMatrix*mv; }`,
-  fragmentShader: `varying vec4 vC; void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); if(r>0.5) discard; gl_FragColor=vec4(vC.rgb*vC.a*smoothstep(0.5,0.15,r),1.);
+  fragmentShader: `varying vec4 vC; void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d); if(r>0.5) discard; gl_FragColor=vec4(vC.rgb,vC.a*smoothstep(0.5,0.2,r));
     #include <colorspace_fragment>
   }` });
 const pts = new THREE.Points(pGeo, pMat); pts.frustumCulled = false; pts.renderOrder = 7; world.add(pts);
-const PC = hex('#f2dc6e'), PG = hex('#9fd3c8');
+const PC = hex('#f4e27c'), PG = hex('#b9e0d6');
 function stepParticles(dt) {
   for (let j = 0; j < NP; j++) {
     const p = parts[j]; p.age += dt;
@@ -328,7 +328,7 @@ function stepParticles(dt) {
       pPos[o*3] = a[0] - SX/2; pPos[o*3+1] = a[2] + 34; pPos[o*3+2] = a[1] - SY/2;
       const tt = 1 - s/TRAIL;
       pCol[o*4] = c.r; pCol[o*4+1] = c.g; pCol[o*4+2] = c.b; pCol[o*4+3] = fade*tt*(p.g ? 0.38 : 0.62);
-      pSize[o] = 70*(0.35 + 0.65*tt);
+      pSize[o] = 56*(0.3 + 0.7*tt);
     }
   }
   pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true; pGeo.attributes.size.needsUpdate = true;
@@ -356,7 +356,7 @@ function placeLabels() {
 // ---------- legend ----------
 function roseSVG() {
   const f = ST.rose.freq, mx = Math.max(...f), R = 34;
-  let s = `<svg class="rose" width="96" height="96" viewBox="-48 -48 96 96"><circle r="${R}" fill="none" stroke="#3a4562"/><circle r="${R/2}" fill="none" stroke="#2c3650"/>`;
+  let s = `<svg class="rose" width="78" height="78" viewBox="-48 -48 96 96"><circle r="${R}" fill="none" stroke="#3a4562"/><circle r="${R/2}" fill="none" stroke="#2c3650"/>`;
   f.forEach((v, i) => { const a0 = (i*22.5 - 9 - 90)*Math.PI/180, a1 = (i*22.5 + 9 - 90)*Math.PI/180, r = R*v/mx;
     s += `<path d="M0 0 L${(Math.cos(a0)*r).toFixed(1)} ${(Math.sin(a0)*r).toFixed(1)} A${r} ${r} 0 0 1 ${(Math.cos(a1)*r).toFixed(1)} ${(Math.sin(a1)*r).toFixed(1)}Z" fill="#5fb3b8" opacity=".8"/>`; });
   return s + `<text y="-${R+5}" text-anchor="middle" font-size="9" fill="#aab0be">N</text></svg>`;
@@ -368,12 +368,11 @@ document.getElementById('legend').innerHTML = `
   <div class="lg-row"><i class="dot" style="background:#e3c44a"></i>${L('Candidate odour source', 'Olası koku kaynağı')}</div>
   <div class="lg-row"><i class="sw" style="background:#d6cdbb"></i>${L('Buildings · tinted inside the cloud', 'Binalar · bulut içindeyse renklenir')}</div>
   <div class="lg-row"><i class="sw" style="background:#2f5a3c"></i>${L('Trees', 'Ağaçlar')}</div>
-  <div class="lg-row"><i class="sw" style="background:#0f3a44"></i>${L('Gulf', 'Körfez')}</div>
   <h4 style="margin-top:10px">${L('Where the wind comes from · year', 'Rüzgârın geldiği yön · yıl')}</h4>${roseSVG()}`;
 
 // ---------- camera ----------
 const VIEWS = {
-  all: { p: W3(14500, 47500, 17500), t: W3(17000, 10500, 0) },
+  all: { p: W3(17400, 36500, 33500), t: W3(17400, 11000, 0) },
   cigli: { p: W3(6600, 15200, 3800), t: W3(10200, 8600, 0) },
   konak: { p: W3(14500, 21000, 3300), t: W3(16200, 14300, 30) },
   bornova: { p: W3(24000, 19000, 4200), t: W3(25600, 10600, 40) },
@@ -448,6 +447,12 @@ function drawChart() {
   const top = ST.top_mahalle, mx = top[0].h;
   $('rank').innerHTML = top.map((m, i) => `<li data-i="${i}"><span>${m.n.replace(' Mahallesi', '')}<small>${m.d || ''}${m.d ? ' · ' : ''}${fmt(m.b)} ${L('buildings', 'bina')}</small></span><i class="bar" style="width:${(m.h/mx*100).toFixed(0)}%"></i><b class="mono">${m.h.toLocaleString(TR ? 'tr-TR' : 'en-GB', { maximumFractionDigits: 1 })} ${L('h', 'sa')}</b></li>`).join('');
   $('rank').querySelectorAll('li').forEach(li => li.onclick = () => { const m = top[+li.dataset.i]; const k = MAH.find(x => x.n === m.n && x.c[0] === m.c[0]) || m; flyTo(k.c[0], k.c[1]); });
+}
+
+// districts
+{
+  const D = ST.districts, mx = D[0].h;
+  $('dist').innerHTML = D.map(d => `<li><span>${d.d}<small>${fmt(d.b)} ${L('buildings', 'bina')} · ${Math.round(d.x4*100)}% ≥ 4 ${L('h', 'sa')}</small></span><i class="bar" style="width:${(d.h/mx*100).toFixed(0)}%"></i><b class="mono">${d.h.toLocaleString(TR ? 'tr-TR' : 'en-GB', { maximumFractionDigits: 1 })} ${L('h', 'sa')}</b></li>`).join('');
 }
 
 // click: what the scenario says about this place

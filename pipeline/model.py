@@ -11,7 +11,7 @@ Particles are released every hour, carried by the hourly wind (60 s steps) with 
 Odour index = weighted particle density per 100 m cell and hour, scaled 0–1 over all days and both scenarios.
 
   python pipeline/model.py
-Output docs/data/odour/MM/{b,o}_HH.png (b = with buildings, o = without) · docs/data/wind/MM.json · build/film_tracks.npz ·
+Output build/odour/MM/{b,o}_HH.png (b = with buildings, o = without) · docs/data/wind/MM.json · build/film_tracks.npz ·
        docs/data/stats.json
 """
 import json, math, time
@@ -116,7 +116,7 @@ def main():
                     if act.any():
                         c, rr_ = P[act, 0], P[act, 1]
                         uu = map_coordinates(u, [rr_, c], order=1, mode="nearest"); vv = map_coordinates(v, [rr_, c], order=1, mode="nearest")
-                        sig = (0.18 * np.hypot(uu, vv) + 0.12) * DT / G
+                        sig = (0.30 * np.hypot(uu, vv) + 0.20) * DT / G
                         P[act, 0] = c + uu * DT / G + rng.normal(0, sig)
                         P[act, 1] = rr_ - vv * DT / G + rng.normal(0, sig)
                     A += DT
@@ -130,21 +130,21 @@ def main():
                         np.add.at(conc[hr], (rr2[ok], cc[ok]), wgt)
                         if film and st % 10 == 9:
                             fx.append(np.c_[P[act, 0], P[act, 1], M[act] * np.exp(-A[act] / (0.9 * 3600))].astype("float32"))
-            conc = np.stack([ndi.gaussian_filter(c, 1.3) for c in conc])
+            conc = np.stack([ndi.gaussian_filter(c, 1.6) for c in conc])
             allc[(scen, mm)] = conc
             if film:
                 tracks = fx
             print(f"[{time.time() - t0:5.0f} s] {scen} {mm}: max {conc.max():.1f}, particles alive {len(P):,}", flush=True)
     # common scale
     ref = np.percentile(np.concatenate([c[c > 0].ravel() for c in allc.values()]), 99.5)
-    (W / "odour").mkdir(exist_ok=True)
+    (W / "odour").mkdir(exist_ok=True); (B / "odour").mkdir(exist_ok=True)
     landG = ~seaG
     lvl = 0.15                                                     # "noticeable" threshold of the index
     for (scen, mm), conc in allc.items():
         idx = np.clip(conc / ref, 0, 1)
-        d = W / "odour" / mm; d.mkdir(exist_ok=True)
-        for hr in range(24):
-            Image.fromarray((np.sqrt(idx[hr]) * 255).astype("uint8")).save(d / f"{scen}_{hr:02d}.png", optimize=True)
+        d = W / "odour" / mm; d.mkdir(exist_ok=True); db = B / "odour" / mm; db.mkdir(exist_ok=True)
+        for hr in range(24):                                         # hourly frames (build/), atlas for the web in build_web.py
+            Image.fromarray((np.sqrt(idx[hr]) * 255).astype("uint8")).save(db / f"{scen}_{hr:02d}.png")
         hours = (idx >= lvl).sum(axis=0)
         np.save(B / f"hours_{scen}_{mm}.npy", hours)
         Image.fromarray(np.clip(hours * 10, 0, 255).astype("uint8")).save(d / f"{scen}_hours.png", optimize=True)
@@ -162,7 +162,7 @@ def main():
         for r in dw.itertuples():
             for scen in ("b", "o"):
                 u, v = field(r.ws10, r.wd10, r.tc, scen == "b")
-                out[scen].append([np.round(coarse(u, 5), 2).ravel().tolist(), np.round(coarse(v, 5), 2).ravel().tolist()])
+                out[scen].append([np.round(coarse(u, 5), 1).ravel().tolist(), np.round(coarse(v, 5), 1).ravel().tolist()])
         (W / "wind" / f"{mm}.json").write_text(json.dumps(out, separators=(",", ":")))
     stats["grid"] = {"X0": X0, "Y1": Y1, "G": G, "NX": NX, "NY": NY, "threshold": lvl}
     stats["days_order"] = days

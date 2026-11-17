@@ -24,7 +24,7 @@ S = {
   layers="Layers", lOd="Odour cloud", lOdE="modelled odour index", lPa="Drift", lPaE="where the air carries it", lBd="Buildings", lBdE="323,318 · height from OSM / GHSL",
   lTr="Trees", lTrE="233,045 · OSM trees, rows and woods", lSl="Slope", lSlE="steeper = lighter", lSo="Sources", lSoE="candidate odour sources",
   relief="Relief", cloud="Cloud", views="Views", vAll="Whole gulf", vCigli="Çiğli", vKonak="Konak", vBornova="Bornova",
-  chart="Land under the cloud, km² · by hour", rank="Neighbourhoods that smell most often", rankh="Average odour hours per day, 12 sample days, with buildings. Click to fly there.",
+  chart="Land under the cloud, km² · by hour", dist="Districts · odour hours per day", disth="Average of the 12 sample days, per building, with buildings. Share = buildings with 4 h or more on an average day.", rank="Neighbourhoods that smell most often", rankh="Average odour hours per day, 12 sample days, with buildings. Click to fly there.",
   howto="How to read this map",
   h_1="<b>Yellow haze</b> is the modelled odour cloud near the ground: pale lemon where it is faint, sulfur yellow where it is strong, olive brown where it is densest.",
   h_2="<b>Moving streaks</b> show where the air carries it this hour, from the sources (sped up).",
@@ -44,6 +44,7 @@ S = {
   r_2="Terrain: Copernicus DEM GLO-30, © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018, provided under COPERNICUS by the European Union and ESA.",
   r_3="Building height: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, European Commission JRC.",
   r_4="Buildings, trees, streams, roads, neighbourhoods: © OpenStreetMap contributors, ODbL.",
+  r_6="District boundaries: geoBoundaries ADM2 Türkiye (Runfola et al. 2020), from OpenStreetMap, ODbL.",
   r_5="Gulf water quality stations and air-quality context: İzmir Büyükşehir Belediyesi Açık Veri Portalı.",
   foot="Barış Parlatangiller · <a href=\"https://barisparlatangiller.github.io/\">all 30 maps</a> · <a href=\"https://github.com/barisparlatangiller/30DMC26-D19-Smell-Izmir-Invisible-Cloud\">code &amp; method</a> · built with AI assistance (Claude, Anthropic)",
   other="tr.html", otherL="TR", otherT="Türkçe",
@@ -62,7 +63,7 @@ S = {
   layers="Katmanlar", lOd="Koku bulutu", lOdE="modellenmiş koku indeksi", lPa="Sürüklenme", lPaE="havanın kokuyu taşıdığı yön", lBd="Binalar", lBdE="323.318 · yükseklik OSM / GHSL",
   lTr="Ağaçlar", lTrE="233.045 · OSM ağaçları, ağaç sıraları ve korular", lSl="Eğim", lSlE="dik = açık renk", lSo="Kaynaklar", lSoE="olası koku kaynakları",
   relief="Rölyef", cloud="Bulut", views="Görünümler", vAll="Tüm körfez", vCigli="Çiğli", vKonak="Konak", vBornova="Bornova",
-  chart="Bulutun altındaki kara, km² · saat saat", rank="En sık koku alan mahalleler", rankh="12 örnek günde günlük ortalama koku saati, binalarla. Tıklayınca oraya gider.",
+  chart="Bulutun altındaki kara, km² · saat saat", dist="İlçeler · günde koku saati", disth="12 örnek günün ortalaması, bina başına, binalarla. Oran = ortalama bir günde 4 saat veya daha fazla koku alan binalar.", rank="En sık koku alan mahalleler", rankh="12 örnek günde günlük ortalama koku saati, binalarla. Tıklayınca oraya gider.",
   howto="Harita nasıl okunur",
   h_1="<b>Sarı pus</b> zemine yakın modellenmiş koku bulutu: hafifse soluk limon, güçlüyse kükürt sarısı, en yoğun yerde zeytin kahvesi.",
   h_2="<b>Hareketli izler</b> havanın kokuyu bu saatte kaynaklardan nereye taşıdığını gösterir (hızlandırılmış).",
@@ -82,6 +83,7 @@ S = {
   r_2="Arazi: Copernicus DEM GLO-30, © DLR e.V. 2010–2014 ve © Airbus Defence and Space GmbH 2014–2018, Avrupa Birliği ve ESA tarafından COPERNICUS kapsamında sağlanmıştır.",
   r_3="Bina yüksekliği: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, Avrupa Komisyonu JRC.",
   r_4="Binalar, ağaçlar, dereler, yollar, mahalleler: © OpenStreetMap katkıcıları, ODbL.",
+  r_6="İlçe sınırları: geoBoundaries ADM2 Türkiye (Runfola vd. 2020), OpenStreetMap kaynaklı, ODbL.",
   r_5="Körfez su kalitesi istasyonları ve hava kalitesi bağlamı: İzmir Büyükşehir Belediyesi Açık Veri Portalı.",
   foot="Barış Parlatangiller · <a href=\"https://barisparlatangiller.github.io/\">30 haritanın tümü</a> · <a href=\"https://github.com/barisparlatangiller/30DMC26-D19-Smell-Izmir-Invisible-Cloud\">kod ve yöntem</a> · yapay zekâ desteğiyle hazırlandı (Claude, Anthropic)",
   other="index.html", otherL="EN", otherT="English",
@@ -167,8 +169,14 @@ for lang, t in S.items():
         <label><input type="checkbox" id="tSl"><span>{t['lSl']}</span><em>{t['lSlE']}</em></label>
         <label><input type="checkbox" id="tSo" checked><span>{t['lSo']}</span><em>{t['lSoE']}</em></label>
       </div>
-      <div class="sl"><span>{t['cloud']}</span><input type="range" id="rOp" min="0.2" max="1" step="0.01" value="0.75"><b class="mono" id="opO">75%</b></div>
+      <div class="sl"><span>{t['cloud']}</span><input type="range" id="rOp" min="0.2" max="1" step="0.01" value="0.85"><b class="mono" id="opO">85%</b></div>
       <div class="sl"><span>{t['relief']}</span><input type="range" id="rEx" min="1" max="3" step="0.1" value="1.6"><b class="mono" id="exv">1.6×</b></div>
+    </section>
+
+    <section class="block">
+      <h2 class="label">{t['dist']}</h2>
+      <ul class="rank" id="dist"></ul>
+      <p class="hint">{t['disth']}</p>
     </section>
 
     <section class="block">
@@ -191,7 +199,7 @@ for lang, t in S.items():
     </details>
     <details class="howto">
       <summary>{t['sources']}</summary>
-      <ol class="refs"><li>{t['r_1']}</li><li>{t['r_2']}</li><li>{t['r_3']}</li><li>{t['r_4']}</li><li>{t['r_5']}</li></ol>
+      <ol class="refs"><li>{t['r_1']}</li><li>{t['r_2']}</li><li>{t['r_3']}</li><li>{t['r_4']}</li><li>{t['r_5']}</li><li>{t['r_6']}</li></ol>
     </details>
     <footer class="foot"><p>{t['foot']}</p></footer>
   </aside>

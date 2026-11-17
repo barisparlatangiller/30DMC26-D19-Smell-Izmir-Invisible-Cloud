@@ -1,0 +1,22 @@
+name: Fetch sea surface temperature (Open-Meteo Marine)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/fetch_sst.yml"]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          set -x
+          mkdir -p /tmp/f/out && cd /tmp/f
+          for P in "38.44,27.10,inner" "38.43,27.03,mid"; do
+            IFS=, read LA LO N <<< "$P"
+            curl -fsS --retry 3 -m 120 "https://marine-api.open-meteo.com/v1/marine?latitude=$LA&longitude=$LO&hourly=sea_surface_temperature&start_date=2025-11-21&end_date=2026-10-21&timezone=Europe%2FIstanbul&format=csv" -o out/sst_$N.csv || echo "fail $N"
+            head -6 out/sst_$N.csv; wc -l out/sst_$N.csv
+          done
+          cd out && git init -q -b fetched3 && git add -A && git -c user.name=gha -c user.email=gha@users.noreply.github.com commit -qm sst
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" fetched3:fetched3 2>&1 | tail -2

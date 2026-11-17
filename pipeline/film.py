@@ -399,9 +399,10 @@ def main():
                 d.ellipse([x - 6, y - 6, x + 6, y + 6], fill=INK, outline=BG, width=2)
                 if x > W - 330 and y < MAP_Y + 200:
                     y = MAP_Y + 215                                   # keep clear of the clock
-                L_ = x < W - 280
-                d.text((x + 12 if L_ else x - 12, y - 2), f"{nm}", font=F["lab"], fill=INK, anchor="ld" if L_ else "rd", stroke_width=3, stroke_fill=BG)
-                d.text((x + 12 if L_ else x - 12, y + 2), f"{m['h']:.0f} odour hours a day", font=F["labs"], fill=ACC, anchor="la" if L_ else "ra", stroke_width=3, stroke_fill=BG)
+                ty = max(y, MAP_Y + 34)
+                L_ = x < W - 280 and not (x > W - 560 and y < MAP_Y + 200)    # text to the left when it would run into the clock
+                d.text((x + 12 if L_ else x - 12, ty - 2), f"{nm}", font=F["lab"], fill=INK, anchor="ld" if L_ else "rd", stroke_width=3, stroke_fill=BG)
+                d.text((x + 12 if L_ else x - 12, ty + 2), f"{m['h']:.0f} odour hours a day", font=F["labs"], fill=ACC, anchor="la" if L_ else "ra", stroke_width=3, stroke_fill=BG)
         im = compose(v, h, "Where does İzmir's gulf smell go?", "21 July · around the inner gulf", labels=1 - u * 0.4,
                      cap=("The inner gulf's shores smell most often", "Karşıyaka and Konak · average of 12 sample days"), overlay=ov, t=T)
         save(im)

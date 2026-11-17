@@ -27,6 +27,15 @@
   "note": "OSM landuse=landfill"
  },
  {
+  "name": "Meles Deresi ağzı",
+  "kind": "stream",
+  "x": 514193.8288100476,
+  "y": 4255850.368931872,
+  "w": 0.6,
+  "r": 120,
+  "note": "İzBB gulf station 7, Meles Deresi çıkışı"
+ },
+ {
   "name": "Bornova Çayı ağzı",
   "kind": "stream",
   "x": 514372.1721181796,

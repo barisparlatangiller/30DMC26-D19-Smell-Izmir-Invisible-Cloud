@@ -92,17 +92,19 @@ def main():
     hh = pd.to_numeric(bl.other_tags.map(lambda s: (tag(s, "height") or "").replace("m", "").strip() or None), errors="coerce")
     c = bl.geometry.representative_point()
     col = ((c.x - X0) / RES).astype(int).clip(0, NX - 1); row = ((Y1 - c.y) / RES).astype(int).clip(0, NY - 1)
-    # DSM-based estimate: 75th percentile of object height in the 3×3 cells around the building
-    oh_max = ndi.percentile_filter(objh, 75, size=3)
-    est = oh_max[row.values, col.values]
-    h = np.where(hh.notna(), hh, np.where(lv.notna(), lv * 3.1 + 1.0, np.nan))
-    src = np.where(hh.notna(), "height", np.where(lv.notna(), "levels", "dsm"))
-    est = np.clip(est, 3.5, 75)
-    small = bl.area < 60
-    h = np.where(np.isnan(h), np.where(small, np.minimum(est, 6), est), h)
+    # GHSL average net building height (2018, 100 m) where OSM has no height / levels; the 30 m DSM is too coarse here
+    with rasterio.open("data/ghsl_anbh_2018_izmir.tif") as gh:
+        ga = gh.read(1).astype("float32"); ga[ga < 0] = 0; gtr = gh.transform
+    gc = ((c.x - gtr.c) / gtr.a).astype(int).clip(0, ga.shape[1] - 1); gr = ((c.y - gtr.f) / gtr.e).astype(int).clip(0, ga.shape[0] - 1)
+    est = ga[gr.values, gc.values]
+    h = np.where(hh.notna() & (hh >= 2.5), hh, np.where(lv.notna() & (lv >= 1), lv * 3.1 + 1.0, np.nan))
+    src = np.where(hh.notna() & (hh >= 2.5), "height", np.where(lv.notna() & (lv >= 1), "levels", np.where(est > 0, "ghsl", "default")))
+    small = bl.area.values < 60
+    h = np.where(np.isnan(h), np.where(est > 0, np.maximum(est, 3.5), 4.0), h)
+    h = np.where(small & (src != "height") & (src != "levels"), np.minimum(h, 4.5), h)
     bl["h"] = np.clip(h, 2.5, 220).round(1); bl["hsrc"] = src
     bl["z"] = ground[row.values, col.values]
-    print(f"buildings {len(bl):,}; height from tag {int((src == 'height').sum())}, levels {int((src == 'levels').sum())}, DSM estimate {int((src == 'dsm').sum()):,}; median {np.median(bl.h):.1f} m")
+    print(f"buildings {len(bl):,}; height tag {int((src == 'height').sum())}, levels {int((src == 'levels').sum())}, GHSL {int((src == 'ghsl').sum()):,}, default {int((src == 'default').sum()):,}; median {np.median(bl.h):.1f} m, p95 {np.percentile(bl.h, 95):.0f} m")
     # oriented boxes for instancing: centre, length, width, angle, height
     mrr = shapely.oriented_envelope(bl.geometry.values)
     co = shapely.get_coordinates(mrr).reshape(len(bl), -1, 2)[:, :4]
@@ -195,6 +197,7 @@ def main():
     add("Çiğli Atıksu Arıtma Tesisi", "wastewater", 27.0055, 38.4780, w=1.0, r=320, note="aeration basins mapped in OSM (landuse=basin)")
     add("Harmandalı Katı Atık Depolama Alanı", "landfill", 27.0655, 38.5335, w=1.0, r=380, note="OSM: Harmandalı Çöplüğü, landuse=landfill; biogas plant next to it")
     add("Karşıyaka Katı Atık Transfer İstasyonu", "transfer", 27.1182, 38.4962, w=0.3, r=80, note="OSM landuse=landfill")
+    add("Meles Deresi ağzı", "stream", 27.16266667, 38.45083333, w=0.6, r=120, note="İzBB gulf station 7, Meles Deresi çıkışı")
     for nm, w in (("Meles Deresi", 0.6), ("Bornova Çayı", 0.4), ("Manda Çayı", 0.5), ("Büyük Çiğli Deresi", 0.4), ("Küçük Çiğli Deresi", 0.3), ("Gökdere", 0.3), ("Peynircioğlu Deresi", 0.4)):
         m = mouth(nm)
         if m is not None:

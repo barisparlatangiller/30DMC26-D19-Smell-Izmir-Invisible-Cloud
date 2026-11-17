@@ -1,0 +1,25 @@
+name: Fetch İzmir district boundaries (OSM admin_level 6)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/fetch_districts.yml"]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Overpass → GeoJSON
+        run: |
+          set -x
+          mkdir -p /tmp/f/out && cd /tmp/f
+          Q='[out:json][timeout:180];area["name"="İzmir"]["admin_level"="4"]->.a;rel(area.a)["boundary"="administrative"]["admin_level"="6"];out geom;'
+          for U in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://overpass.private.coffee/api/interpreter; do
+            curl -fsS --retry 2 -m 300 --data-urlencode "data=$Q" "$U" -o raw.json && break
+          done
+          ls -la raw.json
+          npx -y osmtogeojson@3.0.0-beta.5 raw.json > out/izmir_districts.geojson
+          python3 -c "import json;d=json.load(open('out/izmir_districts.geojson'));print(len(d['features']),[f['properties'].get('name') for f in d['features']])"
+          cd out && git init -q -b fetched2 && git add -A && git -c user.name=gha -c user.email=gha@users.noreply.github.com commit -qm "districts"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" fetched2:fetched2 2>&1 | tail -2

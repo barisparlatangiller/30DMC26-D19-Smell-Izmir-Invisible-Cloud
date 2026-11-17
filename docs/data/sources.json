@@ -1,0 +1,83 @@
+[
+ {
+  "name": "Çiğli Atıksu Arıtma Tesisi",
+  "kind": "wastewater",
+  "x": 500479.7341429578,
+  "y": 4258852.291589393,
+  "w": 1.0,
+  "r": 320,
+  "note": "aeration basins mapped in OSM (landuse=basin)"
+ },
+ {
+  "name": "Harmandalı Katı Atık Depolama Alanı",
+  "kind": "landfill",
+  "x": 505708.8146236352,
+  "y": 4265012.682561626,
+  "w": 1.0,
+  "r": 380,
+  "note": "OSM: Harmandalı Çöplüğü, landuse=landfill; biogas plant next to it"
+ },
+ {
+  "name": "Karşıyaka Katı Atık Transfer İstasyonu",
+  "kind": "transfer",
+  "x": 510307.33174199786,
+  "y": 4260878.391103821,
+  "w": 0.3,
+  "r": 80,
+  "note": "OSM landuse=landfill"
+ },
+ {
+  "name": "Bornova Çayı ağzı",
+  "kind": "stream",
+  "x": 514372.1721181796,
+  "y": 4256760.796972591,
+  "w": 0.4,
+  "r": 120,
+  "note": "stream mouth into the inner gulf (OSM)"
+ },
+ {
+  "name": "Manda Çayı ağzı",
+  "kind": "stream",
+  "x": 514930.6708524345,
+  "y": 4255501.440460623,
+  "w": 0.5,
+  "r": 120,
+  "note": "stream mouth into the inner gulf (OSM)"
+ },
+ {
+  "name": "Büyük Çiğli Deresi ağzı",
+  "kind": "stream",
+  "x": 505732.6274285194,
+  "y": 4258725.452693773,
+  "w": 0.4,
+  "r": 120,
+  "note": "stream mouth into the inner gulf (OSM)"
+ },
+ {
+  "name": "Küçük Çiğli Deresi ağzı",
+  "kind": "stream",
+  "x": 505800.92567706364,
+  "y": 4258688.651517847,
+  "w": 0.3,
+  "r": 120,
+  "note": "stream mouth into the inner gulf (OSM)"
+ },
+ {
+  "name": "Gökdere ağzı",
+  "kind": "stream",
+  "x": 518014.72143913724,
+  "y": 4255179.857084195,
+  "w": 0.3,
+  "r": 120,
+  "note": "stream mouth into the inner gulf (OSM)"
+ },
+ {
+  "name": "Peynircioğlu Deresi ağzı",
+  "kind": "stream",
+  "x": 507133.59454384027,
+  "y": 4258237.06945784,
+  "w": 0.4,
+  "r": 120,
+  "note": "stream mouth into the inner gulf (OSM)"
+ }
+]

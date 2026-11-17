@@ -1,0 +1,28 @@
+name: Fetch external rasters (GHSL building height)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/fetch.yml"]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download + crop
+        run: |
+          set -x
+          sudo apt-get update -q && sudo apt-get install -y -q gdal-bin unzip
+          mkdir -p /tmp/f && cd /tmp/f
+          B=https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL
+          for T in R5_C21 R5_C20 R6_C21; do
+            curl -fsSL --retry 3 -o h_$T.zip "$B/GHS_BUILT_H_GLOBE_R2023A/GHS_BUILT_H_ANBH_E2018_GLOBE_R2023A_54009_100/V1-0/tiles/GHS_BUILT_H_ANBH_E2018_GLOBE_R2023A_54009_100_V1_0_$T.zip" && unzip -o -q h_$T.zip && echo "got $T" || echo "no $T"
+          done
+          ls -la
+          for f in GHS_BUILT_H_*.tif; do gdalinfo "$f" | grep -E "Origin|Size is|Upper Left|Lower Right" ; done
+          gdalwarp -q -t_srs EPSG:32635 -te 491700 4243500 524700 4266300 -tr 100 100 -r bilinear GHS_BUILT_H_*.tif ghsl_anbh_2018_izmir.tif
+          gdalinfo -stats ghsl_anbh_2018_izmir.tif | grep -E "Size|Minimum|Mean"
+          mkdir -p out && cp ghsl_anbh_2018_izmir.tif out/
+          cd out && git init -q -b fetched && git add -A && git -c user.name=gha -c user.email=gha@users.noreply.github.com commit -qm "GHSL crop"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" fetched:fetched 2>&1 | tail -2

@@ -84,15 +84,54 @@ def main():
         cx, cy = (s["x"] - X0) / G, (Y1 - s["y"]) / G
         a = rng.uniform(0, 2 * np.pi, n); rr = r * np.sqrt(rng.uniform(0, 1, n))
         return np.c_[cx + rr * np.cos(a), cy + rr * np.sin(a)]
-    inner_rc = np.argwhere(inner)
+    # ---- the gulf itself: sewage signal from İZBB gulf monitoring (faecal coliform / E. coli, 11 stations, 2012–2026)
+    from pyproj import Transformer
+    tf = Transformer.from_crs(4326, 32635, always_xy=True)
+    ms = pd.read_csv("data/izbb_korfez_olcum.csv", sep=";")
+    ms = ms[ms.OLCUM_TIPI.isin(["FEKAL KOLİFORM", "ESCHERICHIA COLI"])]
+    ms["v"] = pd.to_numeric(ms.OLCUM_DEGERI.astype(str).str.replace(",", ".").str.extract(r"([0-9.]+)")[0], errors="coerce")
+    ms = ms.dropna(subset=["v"])
+    ms["lg"] = np.log10(ms.v.clip(lower=1))
+    sta = pd.read_csv("data/korfez_istasyonlari.csv", encoding="utf-8-sig")
+    med = ms.groupby("ISTASYON_NUMARASI").lg.median()
+    sta = sta[sta.ISTASYON_NUMARASI.isin(med.index)].copy()
+    sta["lg"] = sta.ISTASYON_NUMARASI.map(med); sta["n"] = sta.ISTASYON_NUMARASI.map(ms.groupby("ISTASYON_NUMARASI").size())
+    sta["x"], sta["y"] = tf.transform(sta.BOYLAM.values, sta.ENLEM.values)
+    lo, hi = sta.lg.min(), sta.lg.max()
+    sta["idx"] = 0.15 + 0.85 * (sta.lg - lo) / max(hi - lo, 1e-6)
+    print(sta[["ISTASYON_ADI", "n", "lg", "idx"]].to_string())
+    cy_, cx_ = np.mgrid[0:NY, 0:NX]
+    Xc, Yc = X0 + (cx_ + 0.5) * G, Y1 - (cy_ + 0.5) * G
+    wsum = np.zeros((NY, NX)); vsum = np.zeros((NY, NX))
+    for r in sta.itertuples():
+        w = 1 / np.maximum(np.hypot(Xc - r.x, Yc - r.y), 300) ** 2; wsum += w; vsum += w * r.idx
+    idw = vsum / wsum
+    dshore = ndi.distance_transform_edt(seaG) * G
+    lon_ok = Xc > tf.transform(27.0, 38.42)[0]
+    gulf_w = np.where(seaG & lon_ok, idw * np.exp(-dshore / 1400), 0)           # polluted water near the shore smells most
+    gulf_w[gulf_w < 0.02] = 0
+    np.save(B / "gulf_w.npy", gulf_w.astype("float32"))
+    gulf_rc = np.argwhere(gulf_w > 0); gulf_p = gulf_w[gulf_w > 0] / gulf_w.sum()
+    # weights: stream / canal mouths carry sewage overflow into the gulf → stronger; plant and landfill second
+    WOVR = {"wastewater": 0.8, "landfill": 0.8, "transfer": 0.3}
+    for s_ in S:
+        s_.setdefault("w0", s_["w"])                               # prep.py weight, kept so reruns do not compound
+        if s_["kind"] in WOVR:
+            s_["w"] = WOVR[s_["kind"]]
+        elif "Meles" in s_["name"]:
+            s_["w"] = 1.0
+        else:
+            s_["w"] = round(min(0.9, s_["w0"] * 1.6), 2)
+    GULF_K = [k for k, s_ in enumerate(S) if s_["kind"] not in WOVR]       # gulf-side sources (mouths)
+    stations = [{"n": r.ISTASYON_ADI, "x": round(r.x - X0), "y": round(Y1 - r.y), "lg": round(float(r.lg), 2), "n_obs": int(r.n)} for r in sta.itertuples()]
 
-    allc, stats = {}, {"days": {}}
+    allc, gshare, stats = {}, {}, {"days": {}}
     tracks = None
     for scen in ("b", "o"):
         for mm in days:
             dw = wind[wind.t.dt.strftime("%m") == mm].reset_index(drop=True)
-            P = np.zeros((0, 2)); A = np.zeros(0); M = np.zeros(0)
-            conc = np.zeros((24, NY, NX), "float32")
+            P = np.zeros((0, 2)); A = np.zeros(0); M = np.zeros(0); C = np.zeros(0, bool)
+            conc = np.zeros((24, NY, NX), "float32"); concg = np.zeros((24, NY, NX), "float32")
             film = scen == "b" and mm == "07"
             fx = []
             fields = [field(r.ws10, r.wd10, r.tc, scen == "b") for r in dw.itertuples()]
@@ -101,16 +140,16 @@ def main():
                 rec = k >= 3
                 r = dw.iloc[hr]; u, v = fields[hr]
                 warm = max(0.0, (r.tc - 14) / 12)
-                newp, neww = [], []
-                for s in S:
-                    n = int(round(REL * s["w"]))
-                    newp.append(src_points(s, n)); neww.append(np.full(n, 1.0))
-                ng = int(REL * 0.9 * warm)
+                newp, neww, newc = [], [], []
+                for k_, s in enumerate(S):
+                    n = int(round(REL * s["w"] * (0.6 + 0.4 * min(warm, 1.5) if k_ in GULF_K else 1.0)))
+                    newp.append(src_points(s, n)); neww.append(np.full(n, 1.0)); newc.append(np.full(n, k_ in GULF_K))
+                ng = int(REL * 3.2 * min(0.3 + warm, 2.3))                  # warm, still water smells more (air temperature as proxy)
                 if ng:
-                    kk = inner_rc[rng.integers(0, len(inner_rc), ng)]
-                    newp.append(np.c_[kk[:, 1] + rng.uniform(0, 1, ng), kk[:, 0] + rng.uniform(0, 1, ng)]); neww.append(np.full(ng, 0.8))
-                newp = np.vstack(newp); neww = np.concatenate(neww)
-                P = np.vstack([P, newp]); A = np.r_[A, -rng.uniform(0, 3600, len(newp))]; M = np.r_[M, neww]
+                    kk = gulf_rc[rng.choice(len(gulf_rc), ng, p=gulf_p)]
+                    newp.append(np.c_[kk[:, 1] + rng.uniform(0, 1, ng), kk[:, 0] + rng.uniform(0, 1, ng)]); neww.append(np.full(ng, 0.8)); newc.append(np.ones(ng, bool))
+                newp = np.vstack(newp); neww = np.concatenate(neww); newc = np.concatenate(newc)
+                P = np.vstack([P, newp]); A = np.r_[A, -rng.uniform(0, 3600, len(newp))]; M = np.r_[M, neww]; C = np.r_[C, newc]
                 for st in range(int(3600 / DT)):
                     act = A >= 0
                     if act.any():
@@ -121,17 +160,20 @@ def main():
                         P[act, 1] = rr_ - vv * DT / G + rng.normal(0, sig)
                     A += DT
                     alive = (A < LIFE) & (P[:, 0] > -5) & (P[:, 0] < NX + 5) & (P[:, 1] > -5) & (P[:, 1] < NY + 5)
-                    P, A, M = P[alive], A[alive], M[alive]
+                    P, A, M, C = P[alive], A[alive], M[alive], C[alive]
                     if rec and st % 5 == 4:
                         act = A >= 0
                         cc = P[act, 0].astype(int); rr2 = P[act, 1].astype(int)
                         ok = (cc >= 0) & (cc < NX) & (rr2 >= 0) & (rr2 < NY)
                         wgt = M[act][ok] * np.exp(-A[act][ok] / (0.9 * 3600))
                         np.add.at(conc[hr], (rr2[ok], cc[ok]), wgt)
+                        g_ = C[act][ok]; np.add.at(concg[hr], (rr2[ok][g_], cc[ok][g_]), wgt[g_])
                         if film and st % 10 == 9:
                             fx.append(np.c_[P[act, 0], P[act, 1], M[act] * np.exp(-A[act] / (0.9 * 3600))].astype("float32"))
             conc = np.stack([ndi.gaussian_filter(c, 1.6) for c in conc])
+            concg = np.stack([ndi.gaussian_filter(c, 1.6) for c in concg])
             allc[(scen, mm)] = conc
+            gshare[(scen, mm)] = concg / np.maximum(conc, 1e-9)
             if film:
                 tracks = fx
             print(f"[{time.time() - t0:5.0f} s] {scen} {mm}: max {conc.max():.1f}, particles alive {len(P):,}", flush=True)
@@ -148,10 +190,13 @@ def main():
         hours = (idx >= lvl).sum(axis=0)
         np.save(B / f"hours_{scen}_{mm}.npy", hours)
         Image.fromarray(np.clip(hours * 10, 0, 255).astype("uint8")).save(d / f"{scen}_hours.png", optimize=True)
+        sh = gshare[(scen, mm)]; on = (idx >= lvl) & landG[None]
+        Image.fromarray((np.clip(sh, 0, 1) * 255).astype("uint8").reshape(24 * NY, NX)).save(db / f"{scen}_gulfshare.png")
         e = stats["days"].setdefault(mm, {})
         e[scen] = {"km2_1h": round(float(((hours >= 1) & landG).sum() * G * G / 1e6), 2),
                    "km2_4h": round(float(((hours >= 4) & landG).sum() * G * G / 1e6), 2),
                    "km2_8h": round(float(((hours >= 8) & landG).sum() * G * G / 1e6), 2),
+                   "gulf_share_land": round(float((sh * idx * on).sum() / max((idx * on).sum(), 1e-9)), 3),
                    "land_km2_by_hour": [round(float(((idx[h] >= lvl) & landG).sum() * G * G / 1e6), 2) for h in range(24)]}
     # winds for the web: 500 m grid per hour, both scenarios
     (W / "wind").mkdir(exist_ok=True)
@@ -167,6 +212,8 @@ def main():
     stats["grid"] = {"X0": X0, "Y1": Y1, "G": G, "NX": NX, "NY": NY, "threshold": lvl}
     stats["days_order"] = days
     stats["sources"] = S
+    stats["stations"] = stations
+    (W / "sources.json").write_text(json.dumps(S, ensure_ascii=False, indent=1))
     # buildings affected (21 July, ≥ 4 h)
     bi = np.load(B / "bld_inst.npy")
     bc, br = (bi[:, 0] / G).astype(int).clip(0, NX - 1), (bi[:, 1] / G).astype(int).clip(0, NY - 1)

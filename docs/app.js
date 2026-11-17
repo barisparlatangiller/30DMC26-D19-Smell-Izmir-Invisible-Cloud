@@ -67,7 +67,7 @@ const FOG = hex(BG), FOGD = 90000;
 const [demP, terrP, ST, SRC, MAH, mahP] = await Promise.all([
   pixels('data/dem.png'), pixels('data/terr.png'), fetch('data/stats.json').then(r => r.json()), fetch('data/sources.json').then(r => r.json()),
   fetch('data/mah.json').then(r => r.json()), pixels('data/mah.png')]);
-const DEM = new Float32Array(NX*NY), SEA = new Uint8Array(NX*NY);
+const DEM = new Float32Array(NX*NY), SEA = new Uint8Array(NX*NY);   // terr.png B: 0 land, 128–255 sea (+ sewage signal)
 for (let i = 0; i < NX*NY; i++) { DEM[i] = (demP.d[i*4]*256 + demP.d[i*4+1]) / 50 - 20; SEA[i] = terrP.d[i*4+2] > 127 ? 1 : 0; }
 function demAt(lx, ly) {
   let fx = lx / RES - 0.5, fy = ly / RES - 0.5;
@@ -87,14 +87,14 @@ const terrT = new THREE.DataTexture(flipRows(terrP.d, NX, NY), NX, NY, THREE.RGB
 // odour atlas (24 hours, 6 × 4 tiles), one per day and scenario
 const odourT = new THREE.DataTexture(new Uint8Array(ONX*6*ONY*4*4), ONX*6, ONY*4, THREE.RGBAFormat);
 odourT.magFilter = odourT.minFilter = THREE.LinearFilter;
-let ATLAS = null, HOURS = null, WIND = null;
+let ATLAS = null, GSH = null, WIND = null;
 const cache = {};
 async function loadDay(day, scen) {
   const k = day + scen;
-  if (!cache[k]) cache[k] = Promise.all([pixels(`data/odour/${day}/${scen}.png`), pixels(`data/odour/${day}/${scen}_hours.png`), cache['w'+day] || (cache['w'+day] = fetch(`data/wind/${day}.json`).then(r => r.json()))]);
-  const [a, hrs, w] = await cache[k];
+  if (!cache[k]) cache[k] = Promise.all([pixels(`data/odour/${day}/${scen}.png`), pixels(`data/odour/${day}/${scen}_g.png`), cache['w'+day] || (cache['w'+day] = fetch(`data/wind/${day}.json`).then(r => r.json()))]);
+  const [a, gs, w] = await cache[k];
   if (S.day !== day || S.scen !== scen) return;
-  ATLAS = a; HOURS = hrs; WIND = w;
+  ATLAS = a; GSH = gs; WIND = w;
   odourT.image.data.set(flipRows(a.d, a.w, a.h)); odourT.needsUpdate = true;
   onDay();
 }
@@ -104,6 +104,12 @@ function odourAt(lx, ly, h) {
   const c = Math.min(ONX-1, Math.max(0, (lx/OG)|0)), r = Math.min(ONY-1, Math.max(0, (ly/OG)|0));
   const hh = ((h|0) % 24 + 24) % 24, x = (hh % 6)*ONX + c, y = ((hh/6)|0)*ONY + r;
   const v = ATLAS.d[(y*ATLAS.w + x)*4] / 255; return v*v;
+}
+// share of the odour that comes from the gulf and its stream mouths (0–1)
+function gulfShareAt(lx, ly, h) {
+  if (!GSH) return 0;
+  const c = Math.min(ONX-1, Math.max(0, (lx/OG)|0)), r = Math.min(ONY-1, Math.max(0, (ly/OG)|0)), hh = ((h|0) % 24 + 24) % 24;
+  return GSH.d[((hh*ONY + r)*ONX + c)*4] / 255;
 }
 // wind at a point (500 m grid, linear in time)
 function windAt(lx, ly, h) {
@@ -152,10 +158,10 @@ const terrainMat = new THREE.ShaderMaterial({
   fragmentShader: `${COMMON} uniform sampler2D tex,terr; uniform vec3 light,fogC; uniform float fogD,showSlope,tint; ${ODOUR_GLSL}
     void main(){
       vec3 n=normalize(vN); float lam=max(dot(n,light),0.);
-      vec4 tr=texture2D(terr,vUv); float hs=tr.r, sl=tr.g*45., sea=tr.b;
+      vec4 tr=texture2D(terr,vUv); float hs=tr.r, sl=tr.g*45., sea=step(0.49,tr.b), gw=clamp((tr.b*255.-128.)/127.,0.,1.);
       vec3 col=texture2D(tex,vUv).rgb;
       if(sea<0.5) col*=mix(0.55,1.18,hs)*(0.85+0.22*lam);
-      else col*=0.92+0.1*lam;
+      else { col*=0.92+0.1*lam; col=mix(col,vec3(0.25,0.27,0.16),gw*0.6); }      // murky water where the sewage signal is high
       if(showSlope>0.5 && sea<0.5){ float s=smoothstep(4.,30.,sl); col=mix(col,mix(vec3(0.36,0.42,0.58),vec3(0.86,0.84,0.92),s),0.18+0.5*s); }
       float o=odour(vUv);
       col=mix(col,odRamp(o)*0.9,clamp(o*1.3,0.,0.62)*tint);
@@ -285,7 +291,7 @@ const SP = [];      // [lx, ly, r, cumulative weight]
 let wsum = 0;
 for (const s of SRC) { wsum += s.w; SP.push([s.x - 491700, 4266300 - s.y, s.r, wsum, 1]); }
 const GULF = ST.gulfpts;
-let gulfW = 0;
+let gulfW = 0;   // set per hour from the air temperature (warm water smells more), as in the model
 function spawn(p) {
   const tot = wsum + gulfW;
   const r = Math.random() * tot;
@@ -307,11 +313,12 @@ const pMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, un
     #include <colorspace_fragment>
   }` });
 const pts = new THREE.Points(pGeo, pMat); pts.frustumCulled = false; pts.renderOrder = 7; world.add(pts);
-const PC = hex('#f4e27c'), PG = hex('#b9e0d6');
+const PC = hex('#f6ec9e'), PG = hex('#d9bf4e');
 function stepParticles(dt) {
   for (let j = 0; j < NP; j++) {
     const p = parts[j]; p.age += dt;
     if (p.age > p.life || p.x < 0 || p.x > SX || p.y < 0 || p.y > SY) { spawn(p); continue; }
+    if (p.g === undefined) p.g = 0;
     const [u, v] = windAt(p.x, p.y, S.h);
     const tb = 0.6 + 0.3*Math.hypot(u, v);
     p.x += (u*TIMESCALE + (Math.random()-0.5)*tb*TIMESCALE*0.9)*dt; p.y += (-v*TIMESCALE + (Math.random()-0.5)*tb*TIMESCALE*0.9)*dt;
@@ -327,7 +334,7 @@ function stepParticles(dt) {
       if (!a) { pCol[o*4+3] = 0; pSize[o] = 0; continue; }
       pPos[o*3] = a[0] - SX/2; pPos[o*3+1] = a[2] + 34; pPos[o*3+2] = a[1] - SY/2;
       const tt = 1 - s/TRAIL;
-      pCol[o*4] = c.r; pCol[o*4+1] = c.g; pCol[o*4+2] = c.b; pCol[o*4+3] = fade*tt*(p.g ? 0.38 : 0.62);
+      pCol[o*4] = c.r; pCol[o*4+1] = c.g; pCol[o*4+2] = c.b; pCol[o*4+3] = fade*tt*0.6;
       pSize[o] = 56*(0.3 + 0.7*tt);
     }
   }
@@ -366,6 +373,7 @@ document.getElementById('legend').innerHTML = `
   <div class="ramp"></div>
   <div class="tick mono"><span>${L('faint', 'hafif')}</span><span>${L('noticeable', 'belirgin')}</span><span>${L('strong', 'güçlü')}</span></div>
   <div class="lg-row"><i class="dot" style="background:#e3c44a"></i>${L('Candidate odour source', 'Olası koku kaynağı')}</div>
+  <div class="lg-row"><i class="sw" style="background:#2c3a2e"></i>${L('Murky water: sewage signal in the gulf', 'Bulanık su: körfezde kanalizasyon izi')}</div>
   <div class="lg-row"><i class="sw" style="background:#d6cdbb"></i>${L('Buildings · tinted inside the cloud', 'Binalar · bulut içindeyse renklenir')}</div>
   <div class="lg-row"><i class="sw" style="background:#2f5a3c"></i>${L('Trees', 'Ağaçlar')}</div>
   <h4 style="margin-top:10px">${L('Where the wind comes from · year', 'Rüzgârın geldiği yön · yıl')}</h4>${roseSVG()}`;
@@ -402,6 +410,7 @@ function setHour(h) {
     $('tWind').textContent = `${L('wind', 'rüzgâr')} ${ws.toLocaleString(TR ? 'tr-TR' : 'en-GB')} m/s ${L('from', '')} ${fromDir(wd)}${TR ? ' yönünden' : ''} · ${Math.round(WIND.T[i])} °C`; }
   const dv = new THREE.Vector2(); if (WIND) { const th = WIND.wd[hh]*Math.PI/180, ws = WIND.ws[hh]; dv.set(-Math.sin(th)*ws*0.05, Math.cos(th)*ws*0.05); }
   for (const m of cloudMats) m.uniforms.drift.value.copy(dv);
+  if (WIND) gulfW = 3.2 * Math.min(0.3 + Math.max(0, (WIND.T[hh] - 14) / 12), 2.3);
   drawChart();
 }
 applyEx();
@@ -476,8 +485,9 @@ function showDetail(p) {
   $('detail').innerHTML = `<h3>${title}</h3><p class="sub">${m && m.d ? m.d + ' · ' : ''}21 ${MONTHS[+S.day-1]} · ${S.scen === 'b' ? L('with buildings', 'binalarla') : L('bare terrain', 'çıplak arazi')}</p>
     <div class="row"><span>${L('Odour now', 'Şu an koku')} (${$('tClock').textContent})</span><b>${WORD(now)} · ${now.toFixed(2).replace('.', TR ? ',' : '.')}</b></div>
     <div class="row"><span>${L('Odour hours this day', 'Bu gün koku saati')}</span><b class="mono">${hrs} / 24</b></div>
-    <div class="strip">${strip.map(v => `<i style="background:${v < 0.03 ? 'rgba(255,255,255,.06)' : '#' + rampJS(Math.min(1, v*1.15)).getHexString()}"></i>`).join('')}</div>
+    <div class="strip">${strip.map(v => `<i style="background:${v < 0.03 ? 'rgba(255,255,255,.06)' : '#' + rampJS(Math.min(1, v*1.15)).getHexString()};opacity:${v < 0.03 ? 1 : (0.25 + 0.75*Math.min(1, v/ST.grid.threshold)).toFixed(2)}"></i>`).join('')}</div>
     <div class="sk mono"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+    ${now >= 0.03 ? `<div class="row"><span>${L('From the gulf &amp; stream mouths', 'Körfez ve dere ağızlarından')}</span><b class="mono">${Math.round(gulfShareAt(p.lx, p.ly, S.h)*100)}%</b></div>` : ''}
     <div class="row"><span>${L('Wind here now', 'Burada rüzgâr')}</span><b class="mono">${ws.toFixed(1)} m/s → ${COMPASS[Math.round(((toward%360)+360)%360/45)%8]}</b></div>
     <div class="row"><span>${L('Ground', 'Zemin')}</span><b class="mono">${Math.round(groundAt(p.lx, p.ly))} m</b></div>
     ${m && m.b ? `<div class="row"><span>${L('Neighbourhood, 12-day average', 'Mahalle, 12 gün ortalaması')}</span><b class="mono">${m.h.toFixed(1)} ${L('h/day', 'sa/gün')}</b></div>` : ''}

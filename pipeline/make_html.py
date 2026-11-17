@@ -2,10 +2,11 @@
 import json
 from pathlib import Path
 
-V = "7"
+V = "8"
 ST = json.loads(Path("docs/data/stats.json").read_text())
 H = ST["headline"]
 lin = ST["headline"]["linger_dense"]["07"]
+GS = H["gulf_share_07"]; GMIN, GMAX = H["gulf_share_min"], H["gulf_share_max"]
 pct = lambda x: f"{x * 100:.0f}%"
 N4 = H["bld_4h_07_b"]
 
@@ -16,28 +17,28 @@ S = {
   ogt="The invisible cloud over İzmir", ogd="Where does the smell go? A 3D odour-drift scenario for İzmir: wind, slopes, buildings and trees, hour by hour on 12 days of the year.",
   canvas="3D map of İzmir with a modelled odour cloud drifting over the city", load="Reading the wind…",
   eyebrow="#30DayMapChallenge · Day 19 · Smell · İzmir", h1="The invisible cloud over İzmir",
-  lede="On a hot July afternoon the <b>imbat</b>, the sea breeze from the north-west, picks up the smell of the <b>inner gulf</b>, a <b>wastewater plant</b> and a <b>landfill</b> and pushes it into the city. Where does it go, hour by hour?",
-  s1=f"buildings inside the cloud for 4 h or more on 21 July", s2="of buildings get at least one odour hour on one of the 12 sample days",
-  s3="more odour lingers in dense blocks when buildings slow the wind (21 July)",
+  lede="Sewage-fed streams and canals empty into the shallow <b>inner gulf</b>. On a hot July afternoon the <b>imbat</b>, the sea breeze from the north-west, picks up the smell of the water, the stream mouths, a <b>wastewater plant</b> and a <b>landfill</b> and pushes it into the city. Where does it go, hour by hour?",
+  s1="buildings inside the cloud for 4 h or more on 21 July", s2="of the odour over land comes from the gulf and its stream mouths (21 July)",
+  s3="of buildings get at least one odour hour on one of the 12 sample days",
   scen="Scenario · not a measurement", day="Day", hour="Hour", play="Play", pause="Pause", wb="With buildings", wo="Bare terrain",
-  wbh="Buildings slow the wind near the ground, so the cloud lingers longer in dense blocks.",
+  wbh="Buildings slow the wind near the ground, so the cloud lingers longer in dense blocks: LINGER more odour there on 21 July.",
   layers="Layers", lOd="Odour cloud", lOdE="modelled odour index", lPa="Drift", lPaE="where the air carries it", lBd="Buildings", lBdE="323,318 · height from OSM / GHSL",
   lTr="Trees", lTrE="233,045 · OSM trees, rows and woods", lSl="Slope", lSlE="steeper = lighter", lSo="Sources", lSoE="candidate odour sources",
   relief="Relief", cloud="Cloud", views="Views", vAll="Whole gulf", vCigli="Çiğli", vKonak="Konak", vBornova="Bornova",
   chart="Land under the cloud, km² · by hour", dist="Districts · odour hours per day", disth="Average of the 12 sample days, per building, with buildings. Share = buildings with 4 h or more on an average day.", rank="Neighbourhoods that smell most often", rankh="Average odour hours per day, 12 sample days, with buildings. Click to fly there.",
   howto="How to read this map",
   h_1="<b>Yellow haze</b> is the modelled odour cloud near the ground: pale lemon where it is faint, sulfur yellow where it is strong, olive brown where it is densest.",
-  h_2="<b>Moving streaks</b> show where the air carries it this hour, from the sources (sped up).",
+  h_2="<b>Moving streaks</b> show where the air carries it this hour (sped up): deeper yellow from the gulf and the stream mouths, pale lemon from the plant and the landfill. <b>Murky olive water</b> marks where the gulf's sewage signal is highest.",
   h_3="Pick a <b>day</b> and an <b>hour</b>. In summer the imbat blows from the north-west in the afternoon; at night the wind drops and the air slides down the slopes to the gulf.",
   h_4="<b>Click</b> anywhere: odour now, odour hours that day, wind and the neighbourhood.",
   method="Method, data &amp; limits",
   m_wind="<b>Wind.</b> Hourly 10 m wind, temperature and humidity for the 21st of every month, Nov 2025 – Oct 2026 (Open-Meteo, one point in the gulf). On the map the wind slows and turns where it would have to climb a steep slope, speeds up over open ridges and the sea, and drains down the slopes on calm nights.",
   m_bld="<b>Buildings.</b> 323,318 OSM footprints. Heights from OSM tags where mapped (282), otherwise from GHSL GHS-BUILT-H 2018 (100 m). In the “with buildings” scenario dense, tall blocks slow the wind near the ground to 40–70% of the open value.",
-  m_src="<b>Sources.</b> Relative weights, not emissions: Çiğli wastewater plant (1.0), Harmandalı landfill (1.0), Meles mouth (0.6), Karşıyaka transfer station (0.3), six other stream mouths (0.3–0.5) and the shallow inner gulf, stronger when the air is hot.",
+  m_src="<b>The gulf.</b> The water near the shore releases odour in proportion to the sewage signal measured by İzmir Metropolitan Municipality at 11 gulf stations (median faecal coliform and E. coli, 2012–2026, about 340 samples per station). The signal is spread over the water by distance and fades 1–2 km offshore; it is highest off Meles, Bayraklı, Karşıyaka pier and Konak. Warm air (a proxy for warm, still water) makes it stronger. <b>Other sources</b>, relative weights, not emissions: stream and canal mouths that carry sewage overflow (Meles 1.0, six others 0.5–0.8), Çiğli wastewater plant (0.8), Harmandalı landfill (0.8), Karşıyaka transfer station (0.3).",
   m_mod="<b>Model.</b> Particles are released every hour, carried by the wind in 1-minute steps with turbulent spread, and fade over about an hour. The odour index is the particle density per 100 m cell, scaled 0–1 over all days. “Odour hour” = index ≥ 0.15.",
   limits="Limits",
   l_1="This is a <b>scenario</b>: a way to see how wind, slopes and buildings move air. It is not an odour measurement, an H₂S map or a forecast. There are no public emission rates for these sources, so all sources use relative weights.",
-  l_2="One wind point for the whole area, a simple terrain rule instead of a flow model (no CFD), building heights partly estimated. The gulf's smell depends on water temperature, oxygen and algae, which are only proxied by air temperature here.",
+  l_2="One wind point for the whole area, a simple terrain rule instead of a flow model (no CFD), building heights partly estimated. The gulf's smell depends on water temperature, oxygen and algae, which are only proxied by air temperature here. Coliform counts show sewage in the water, not the smell itself: they are used only to say where along the shore the water is dirtiest.",
   l_3="Terrain: Copernicus DEM GLO-30. Trees are OSM trees, tree rows and points placed in mapped woods and orchards.",
   sources="Sources",
   r_1="Wind &amp; weather: <a href=\"https://open-meteo.com/\">Open-Meteo</a> historical API, 38.49 N 27.11 E (CC BY 4.0).",
@@ -45,7 +46,7 @@ S = {
   r_3="Building height: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, European Commission JRC.",
   r_4="Buildings, trees, streams, roads, neighbourhoods: © OpenStreetMap contributors, ODbL.",
   r_6="District boundaries: geoBoundaries ADM2 Türkiye (Runfola et al. 2020), from OpenStreetMap, ODbL.",
-  r_5="Gulf water quality stations and air-quality context: İzmir Büyükşehir Belediyesi Açık Veri Portalı.",
+  r_5="Gulf water quality (faecal coliform, E. coli, 11 stations, 2012–2026): İzmir Büyükşehir Belediyesi Açık Veri Portalı.",
   foot="Barış Parlatangiller · <a href=\"https://barisparlatangiller.github.io/\">all 30 maps</a> · <a href=\"https://github.com/barisparlatangiller/30DMC26-D19-Smell-Izmir-Invisible-Cloud\">code &amp; method</a> · built with AI assistance (Claude, Anthropic)",
   other="tr.html", otherL="TR", otherT="Türkçe",
  ),
@@ -55,28 +56,28 @@ S = {
   ogt="İzmir'in üzerindeki görünmez bulut", ogd="Koku nereye gidiyor? İzmir için 3B koku yayılım senaryosu: rüzgâr, eğim, binalar ve ağaçlar, yılın 12 gününde saat saat.",
   canvas="İzmir'in 3B haritası; modellenmiş koku bulutu kentin üzerinde sürükleniyor", load="Rüzgâr okunuyor…",
   eyebrow="#30DayMapChallenge · Gün 19 · Koku · İzmir", h1="İzmir'in üzerindeki görünmez bulut",
-  lede="Sıcak bir temmuz öğleden sonrası kuzeybatıdan esen <b>imbat</b>, <b>iç körfezin</b>, bir <b>atıksu arıtma tesisinin</b> ve bir <b>çöplüğün</b> kokusunu alıp kente taşıyor. Koku saat saat nereye gidiyor?",
-  s1="bina 21 Temmuz'da 4 saat veya daha uzun süre bulutun içinde", s2="binalar, 12 örnek günün en az birinde en az bir saat koku alıyor",
-  s3="daha fazla koku yoğun yapı adalarında kalıyor, çünkü binalar rüzgârı yavaşlatıyor (21 Temmuz)",
+  lede="Kanalizasyon karışan dereler ve kanallar sığ <b>iç körfeze</b> dökülüyor. Sıcak bir temmuz öğleden sonrası kuzeybatıdan esen <b>imbat</b>, suyun, dere ağızlarının, bir <b>atıksu arıtma tesisinin</b> ve bir <b>çöplüğün</b> kokusunu alıp kente taşıyor. Koku saat saat nereye gidiyor?",
+  s1="bina 21 Temmuz'da 4 saat veya daha uzun süre bulutun içinde", s2="karadaki kokunun körfezden ve dere ağızlarından geliyor (21 Temmuz)",
+  s3="binalar, 12 örnek günün en az birinde en az bir saat koku alıyor",
   scen="Senaryo · ölçüm değil", day="Gün", hour="Saat", play="Oynat", pause="Durdur", wb="Binalarla", wo="Çıplak arazi",
-  wbh="Binalar zemine yakın rüzgârı yavaşlatır; bulut yoğun yapı adalarında daha uzun kalır.",
+  wbh="Binalar zemine yakın rüzgârı yavaşlatır; bulut yoğun yapı adalarında daha uzun kalır: 21 Temmuz'da orada LINGER daha fazla koku.",
   layers="Katmanlar", lOd="Koku bulutu", lOdE="modellenmiş koku indeksi", lPa="Sürüklenme", lPaE="havanın kokuyu taşıdığı yön", lBd="Binalar", lBdE="323.318 · yükseklik OSM / GHSL",
   lTr="Ağaçlar", lTrE="233.045 · OSM ağaçları, ağaç sıraları ve korular", lSl="Eğim", lSlE="dik = açık renk", lSo="Kaynaklar", lSoE="olası koku kaynakları",
   relief="Rölyef", cloud="Bulut", views="Görünümler", vAll="Tüm körfez", vCigli="Çiğli", vKonak="Konak", vBornova="Bornova",
   chart="Bulutun altındaki kara, km² · saat saat", dist="İlçeler · günde koku saati", disth="12 örnek günün ortalaması, bina başına, binalarla. Oran = ortalama bir günde 4 saat veya daha fazla koku alan binalar.", rank="En sık koku alan mahalleler", rankh="12 örnek günde günlük ortalama koku saati, binalarla. Tıklayınca oraya gider.",
   howto="Harita nasıl okunur",
   h_1="<b>Sarı pus</b> zemine yakın modellenmiş koku bulutu: hafifse soluk limon, güçlüyse kükürt sarısı, en yoğun yerde zeytin kahvesi.",
-  h_2="<b>Hareketli izler</b> havanın kokuyu bu saatte kaynaklardan nereye taşıdığını gösterir (hızlandırılmış).",
+  h_2="<b>Hareketli izler</b> havanın kokuyu bu saatte nereye taşıdığını gösterir (hızlandırılmış): koyu sarı körfezden ve dere ağızlarından, soluk limon arıtmadan ve çöplükten. <b>Bulanık zeytin rengi su</b> körfezde kanalizasyon izinin en yüksek olduğu yerleri gösterir.",
   h_3="Bir <b>gün</b> ve <b>saat</b> seçin. Yazın imbat öğleden sonra kuzeybatıdan eser; gece rüzgâr düşer ve hava yamaçlardan körfeze doğru süzülür.",
   h_4="Herhangi bir yere <b>tıklayın</b>: şu anki koku, o gün kaç saat koku, rüzgâr ve mahalle.",
   method="Yöntem, veri ve sınırlar",
   m_wind="<b>Rüzgâr.</b> Kasım 2025 – Ekim 2026 arasında her ayın 21'i için saatlik 10 m rüzgâr, sıcaklık ve nem (Open-Meteo, körfezde tek nokta). Haritada rüzgâr dik bir yamaca tırmanması gereken yerde yavaşlar ve yön değiştirir, açık sırtlarda ve denizde hızlanır, sakin gecelerde yamaçlardan aşağı süzülür.",
   m_bld="<b>Binalar.</b> 323.318 OSM bina izi. Yükseklik OSM etiketinden (282 bina), yoksa GHSL GHS-BUILT-H 2018'den (100 m). “Binalarla” senaryosunda yoğun ve yüksek yapı adaları zemine yakın rüzgârı açık alana göre %40–70'e düşürür.",
-  m_src="<b>Kaynaklar.</b> Göreli ağırlıklar, emisyon değil: Çiğli Atıksu Arıtma (1,0), Harmandalı Katı Atık (1,0), Meles ağzı (0,6), Karşıyaka transfer istasyonu (0,3), altı dere ağzı daha (0,3–0,5) ve sığ iç körfez; hava sıcakken daha güçlü.",
+  m_src="<b>Körfez.</b> Kıyıya yakın su, İzmir Büyükşehir Belediyesi'nin 11 körfez istasyonunda ölçtüğü kanalizasyon izine göre koku verir (fekal koliform ve E. coli medyanı, 2012–2026, istasyon başına yaklaşık 340 örnek). Bu iz mesafeye göre suya dağıtılır ve kıyıdan 1–2 km açıkta söner; en yüksek değerler Meles, Bayraklı, Karşıyaka iskelesi ve Konak açıklarında. Sıcak hava (ılık, durgun suyun göstergesi) etkiyi artırır. <b>Diğer kaynaklar</b>, göreli ağırlık, emisyon değil: kanalizasyon taşkını taşıyan dere ve kanal ağızları (Meles 1,0, altı dere daha 0,5–0,8), Çiğli Atıksu Arıtma (0,8), Harmandalı Katı Atık (0,8), Karşıyaka transfer istasyonu (0,3).",
   m_mod="<b>Model.</b> Her saat parçacıklar salınır, rüzgârla 1 dakikalık adımlarla ve türbülanslı yayılımla taşınır, yaklaşık bir saatte söner. Koku indeksi 100 m hücre başına parçacık yoğunluğudur, tüm günler için 0–1 ölçeklenmiştir. “Koku saati” = indeks ≥ 0,15.",
   limits="Sınırlar",
   l_1="Bu bir <b>senaryo</b>: rüzgârın, eğimin ve binaların havayı nasıl taşıdığını görmenin bir yolu. Koku ölçümü, H₂S haritası ya da tahmin değildir. Bu kaynaklar için kamuya açık emisyon verisi olmadığından tüm kaynaklar göreli ağırlıkla modellenmiştir.",
-  l_2="Tüm alan için tek rüzgâr noktası, akış modeli yerine basit bir arazi kuralı (CFD yok), bina yükseklikleri kısmen tahmini. Körfezin kokusu su sıcaklığına, oksijene ve alglere bağlıdır; burada yalnızca hava sıcaklığıyla temsil ediliyor.",
+  l_2="Tüm alan için tek rüzgâr noktası, akış modeli yerine basit bir arazi kuralı (CFD yok), bina yükseklikleri kısmen tahmini. Körfezin kokusu su sıcaklığına, oksijene ve alglere bağlıdır; burada yalnızca hava sıcaklığıyla temsil ediliyor. Koliform sayıları kokuyu değil, sudaki kanalizasyonu gösterir: burada yalnızca kıyının neresinde suyun en kirli olduğunu belirlemek için kullanıldı.",
   l_3="Arazi: Copernicus DEM GLO-30. Ağaçlar OSM ağaçları, ağaç sıraları ve haritalanmış koru ve bahçelere yerleştirilen noktalardır.",
   sources="Kaynaklar",
   r_1="Rüzgâr ve hava: <a href=\"https://open-meteo.com/\">Open-Meteo</a> geçmiş veri API'si, 38,49 K 27,11 D (CC BY 4.0).",
@@ -84,7 +85,7 @@ S = {
   r_3="Bina yüksekliği: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, Avrupa Komisyonu JRC.",
   r_4="Binalar, ağaçlar, dereler, yollar, mahalleler: © OpenStreetMap katkıcıları, ODbL.",
   r_6="İlçe sınırları: geoBoundaries ADM2 Türkiye (Runfola vd. 2020), OpenStreetMap kaynaklı, ODbL.",
-  r_5="Körfez su kalitesi istasyonları ve hava kalitesi bağlamı: İzmir Büyükşehir Belediyesi Açık Veri Portalı.",
+  r_5="Körfez su kalitesi (fekal koliform, E. coli, 11 istasyon, 2012–2026): İzmir Büyükşehir Belediyesi Açık Veri Portalı.",
   foot="Barış Parlatangiller · <a href=\"https://barisparlatangiller.github.io/\">30 haritanın tümü</a> · <a href=\"https://github.com/barisparlatangiller/30DMC26-D19-Smell-Izmir-Invisible-Cloud\">kod ve yöntem</a> · yapay zekâ desteğiyle hazırlandı (Claude, Anthropic)",
   other="index.html", otherL="EN", otherT="English",
  )}
@@ -95,8 +96,9 @@ def num(x, lang):
 
 for lang, t in S.items():
     s1 = num(N4, lang)
-    s2 = pct(H["share_any_day"]) if lang == "en" else "%" + f"{H['share_any_day'] * 100:.0f}"
-    s3 = f"+{(lin - 1) * 100:.0f}%" if lang == "en" else f"+%{(lin - 1) * 100:.0f}"
+    s2 = pct(GS) if lang == "en" else "%" + f"{GS * 100:.0f}"
+    s3 = pct(H["share_any_day"]) if lang == "en" else "%" + f"{H['share_any_day'] * 100:.0f}"
+    t = dict(t); t["wbh"] = t["wbh"].replace("LINGER", f"+{(lin - 1) * 100:.0f}%" if lang == "en" else f"+%{(lin - 1) * 100:.0f}")
     html = f"""<!doctype html>
 <html lang="{lang}">
 <head>

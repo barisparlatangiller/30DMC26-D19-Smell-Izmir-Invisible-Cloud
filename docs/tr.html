@@ -9,7 +9,7 @@
 <meta property="og:description" content="Koku nereye gidiyor? İzmir için 3B koku yayılım senaryosu: rüzgâr, eğim, binalar ve ağaçlar, yılın 12 gününde saat saat.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -40,19 +40,19 @@
     <header class="head">
       <p class="eyebrow">#30DayMapChallenge · Gün 19 · Koku · İzmir</p>
       <h1>İzmir'in üzerindeki görünmez bulut</h1>
-      <p class="lede">Sıcak bir temmuz öğleden sonrası kuzeybatıdan esen <b>imbat</b>, <b>iç körfezin</b>, bir <b>atıksu arıtma tesisinin</b> ve bir <b>çöplüğün</b> kokusunu alıp kente taşıyor. Koku saat saat nereye gidiyor?</p>
+      <p class="lede">Kanalizasyon karışan dereler ve kanallar sığ <b>iç körfeze</b> dökülüyor. Sıcak bir temmuz öğleden sonrası kuzeybatıdan esen <b>imbat</b>, suyun, dere ağızlarının, bir <b>atıksu arıtma tesisinin</b> ve bir <b>çöplüğün</b> kokusunu alıp kente taşıyor. Koku saat saat nereye gidiyor?</p>
     </header>
     <div class="stats">
-      <div class="st"><b class="mono">79.833</b><span>bina 21 Temmuz'da 4 saat veya daha uzun süre bulutun içinde</span></div>
-      <div class="st"><b class="mono">%77</b><span>binalar, 12 örnek günün en az birinde en az bir saat koku alıyor</span></div>
-      <div class="st"><b class="mono">+%6</b><span>daha fazla koku yoğun yapı adalarında kalıyor, çünkü binalar rüzgârı yavaşlatıyor (21 Temmuz)</span></div>
+      <div class="st"><b class="mono">96.647</b><span>bina 21 Temmuz'da 4 saat veya daha uzun süre bulutun içinde</span></div>
+      <div class="st"><b class="mono">%88</b><span>karadaki kokunun körfezden ve dere ağızlarından geliyor (21 Temmuz)</span></div>
+      <div class="st"><b class="mono">%86</b><span>binalar, 12 örnek günün en az birinde en az bir saat koku alıyor</span></div>
     </div>
 
     <section class="block" id="detail" hidden></section>
 
     <section class="block">
       <div class="seg seg2" id="scenSeg"><button data-s="b" class="on">Binalarla</button><button data-s="o">Çıplak arazi</button></div>
-      <p class="hint">Binalar zemine yakın rüzgârı yavaşlatır; bulut yoğun yapı adalarında daha uzun kalır.</p>
+      <p class="hint">Binalar zemine yakın rüzgârı yavaşlatır; bulut yoğun yapı adalarında daha uzun kalır: 21 Temmuz'da orada +%6 daha fazla koku.</p>
     </section>
 
     <section class="block">
@@ -88,24 +88,24 @@
 
     <details class="howto" open>
       <summary>Harita nasıl okunur</summary>
-      <ol><li><b>Sarı pus</b> zemine yakın modellenmiş koku bulutu: hafifse soluk limon, güçlüyse kükürt sarısı, en yoğun yerde zeytin kahvesi.</li><li><b>Hareketli izler</b> havanın kokuyu bu saatte kaynaklardan nereye taşıdığını gösterir (hızlandırılmış).</li><li>Bir <b>gün</b> ve <b>saat</b> seçin. Yazın imbat öğleden sonra kuzeybatıdan eser; gece rüzgâr düşer ve hava yamaçlardan körfeze doğru süzülür.</li><li>Herhangi bir yere <b>tıklayın</b>: şu anki koku, o gün kaç saat koku, rüzgâr ve mahalle.</li></ol>
+      <ol><li><b>Sarı pus</b> zemine yakın modellenmiş koku bulutu: hafifse soluk limon, güçlüyse kükürt sarısı, en yoğun yerde zeytin kahvesi.</li><li><b>Hareketli izler</b> havanın kokuyu bu saatte nereye taşıdığını gösterir (hızlandırılmış): koyu sarı körfezden ve dere ağızlarından, soluk limon arıtmadan ve çöplükten. <b>Bulanık zeytin rengi su</b> körfezde kanalizasyon izinin en yüksek olduğu yerleri gösterir.</li><li>Bir <b>gün</b> ve <b>saat</b> seçin. Yazın imbat öğleden sonra kuzeybatıdan eser; gece rüzgâr düşer ve hava yamaçlardan körfeze doğru süzülür.</li><li>Herhangi bir yere <b>tıklayın</b>: şu anki koku, o gün kaç saat koku, rüzgâr ve mahalle.</li></ol>
     </details>
     <details class="howto">
       <summary>Yöntem, veri ve sınırlar</summary>
-      <p><b>Rüzgâr.</b> Kasım 2025 – Ekim 2026 arasında her ayın 21'i için saatlik 10 m rüzgâr, sıcaklık ve nem (Open-Meteo, körfezde tek nokta). Haritada rüzgâr dik bir yamaca tırmanması gereken yerde yavaşlar ve yön değiştirir, açık sırtlarda ve denizde hızlanır, sakin gecelerde yamaçlardan aşağı süzülür.</p><p><b>Binalar.</b> 323.318 OSM bina izi. Yükseklik OSM etiketinden (282 bina), yoksa GHSL GHS-BUILT-H 2018'den (100 m). “Binalarla” senaryosunda yoğun ve yüksek yapı adaları zemine yakın rüzgârı açık alana göre %40–70'e düşürür.</p><p><b>Kaynaklar.</b> Göreli ağırlıklar, emisyon değil: Çiğli Atıksu Arıtma (1,0), Harmandalı Katı Atık (1,0), Meles ağzı (0,6), Karşıyaka transfer istasyonu (0,3), altı dere ağzı daha (0,3–0,5) ve sığ iç körfez; hava sıcakken daha güçlü.</p><p><b>Model.</b> Her saat parçacıklar salınır, rüzgârla 1 dakikalık adımlarla ve türbülanslı yayılımla taşınır, yaklaşık bir saatte söner. Koku indeksi 100 m hücre başına parçacık yoğunluğudur, tüm günler için 0–1 ölçeklenmiştir. “Koku saati” = indeks ≥ 0,15.</p>
+      <p><b>Rüzgâr.</b> Kasım 2025 – Ekim 2026 arasında her ayın 21'i için saatlik 10 m rüzgâr, sıcaklık ve nem (Open-Meteo, körfezde tek nokta). Haritada rüzgâr dik bir yamaca tırmanması gereken yerde yavaşlar ve yön değiştirir, açık sırtlarda ve denizde hızlanır, sakin gecelerde yamaçlardan aşağı süzülür.</p><p><b>Binalar.</b> 323.318 OSM bina izi. Yükseklik OSM etiketinden (282 bina), yoksa GHSL GHS-BUILT-H 2018'den (100 m). “Binalarla” senaryosunda yoğun ve yüksek yapı adaları zemine yakın rüzgârı açık alana göre %40–70'e düşürür.</p><p><b>Körfez.</b> Kıyıya yakın su, İzmir Büyükşehir Belediyesi'nin 11 körfez istasyonunda ölçtüğü kanalizasyon izine göre koku verir (fekal koliform ve E. coli medyanı, 2012–2026, istasyon başına yaklaşık 340 örnek). Bu iz mesafeye göre suya dağıtılır ve kıyıdan 1–2 km açıkta söner; en yüksek değerler Meles, Bayraklı, Karşıyaka iskelesi ve Konak açıklarında. Sıcak hava (ılık, durgun suyun göstergesi) etkiyi artırır. <b>Diğer kaynaklar</b>, göreli ağırlık, emisyon değil: kanalizasyon taşkını taşıyan dere ve kanal ağızları (Meles 1,0, altı dere daha 0,5–0,8), Çiğli Atıksu Arıtma (0,8), Harmandalı Katı Atık (0,8), Karşıyaka transfer istasyonu (0,3).</p><p><b>Model.</b> Her saat parçacıklar salınır, rüzgârla 1 dakikalık adımlarla ve türbülanslı yayılımla taşınır, yaklaşık bir saatte söner. Koku indeksi 100 m hücre başına parçacık yoğunluğudur, tüm günler için 0–1 ölçeklenmiştir. “Koku saati” = indeks ≥ 0,15.</p>
     </details>
     <details class="howto">
       <summary>Sınırlar</summary>
-      <p>Bu bir <b>senaryo</b>: rüzgârın, eğimin ve binaların havayı nasıl taşıdığını görmenin bir yolu. Koku ölçümü, H₂S haritası ya da tahmin değildir. Bu kaynaklar için kamuya açık emisyon verisi olmadığından tüm kaynaklar göreli ağırlıkla modellenmiştir.</p><p>Tüm alan için tek rüzgâr noktası, akış modeli yerine basit bir arazi kuralı (CFD yok), bina yükseklikleri kısmen tahmini. Körfezin kokusu su sıcaklığına, oksijene ve alglere bağlıdır; burada yalnızca hava sıcaklığıyla temsil ediliyor.</p><p>Arazi: Copernicus DEM GLO-30. Ağaçlar OSM ağaçları, ağaç sıraları ve haritalanmış koru ve bahçelere yerleştirilen noktalardır.</p>
+      <p>Bu bir <b>senaryo</b>: rüzgârın, eğimin ve binaların havayı nasıl taşıdığını görmenin bir yolu. Koku ölçümü, H₂S haritası ya da tahmin değildir. Bu kaynaklar için kamuya açık emisyon verisi olmadığından tüm kaynaklar göreli ağırlıkla modellenmiştir.</p><p>Tüm alan için tek rüzgâr noktası, akış modeli yerine basit bir arazi kuralı (CFD yok), bina yükseklikleri kısmen tahmini. Körfezin kokusu su sıcaklığına, oksijene ve alglere bağlıdır; burada yalnızca hava sıcaklığıyla temsil ediliyor. Koliform sayıları kokuyu değil, sudaki kanalizasyonu gösterir: burada yalnızca kıyının neresinde suyun en kirli olduğunu belirlemek için kullanıldı.</p><p>Arazi: Copernicus DEM GLO-30. Ağaçlar OSM ağaçları, ağaç sıraları ve haritalanmış koru ve bahçelere yerleştirilen noktalardır.</p>
     </details>
     <details class="howto">
       <summary>Kaynaklar</summary>
-      <ol class="refs"><li>Rüzgâr ve hava: <a href="https://open-meteo.com/">Open-Meteo</a> geçmiş veri API'si, 38,49 K 27,11 D (CC BY 4.0).</li><li>Arazi: Copernicus DEM GLO-30, © DLR e.V. 2010–2014 ve © Airbus Defence and Space GmbH 2014–2018, Avrupa Birliği ve ESA tarafından COPERNICUS kapsamında sağlanmıştır.</li><li>Bina yüksekliği: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, Avrupa Komisyonu JRC.</li><li>Binalar, ağaçlar, dereler, yollar, mahalleler: © OpenStreetMap katkıcıları, ODbL.</li><li>Körfez su kalitesi istasyonları ve hava kalitesi bağlamı: İzmir Büyükşehir Belediyesi Açık Veri Portalı.</li><li>İlçe sınırları: geoBoundaries ADM2 Türkiye (Runfola vd. 2020), OpenStreetMap kaynaklı, ODbL.</li></ol>
+      <ol class="refs"><li>Rüzgâr ve hava: <a href="https://open-meteo.com/">Open-Meteo</a> geçmiş veri API'si, 38,49 K 27,11 D (CC BY 4.0).</li><li>Arazi: Copernicus DEM GLO-30, © DLR e.V. 2010–2014 ve © Airbus Defence and Space GmbH 2014–2018, Avrupa Birliği ve ESA tarafından COPERNICUS kapsamında sağlanmıştır.</li><li>Bina yüksekliği: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, Avrupa Komisyonu JRC.</li><li>Binalar, ağaçlar, dereler, yollar, mahalleler: © OpenStreetMap katkıcıları, ODbL.</li><li>Körfez su kalitesi (fekal koliform, E. coli, 11 istasyon, 2012–2026): İzmir Büyükşehir Belediyesi Açık Veri Portalı.</li><li>İlçe sınırları: geoBoundaries ADM2 Türkiye (Runfola vd. 2020), OpenStreetMap kaynaklı, ODbL.</li></ol>
     </details>
     <footer class="foot"><p>Barış Parlatangiller · <a href="https://barisparlatangiller.github.io/">30 haritanın tümü</a> · <a href="https://github.com/barisparlatangiller/30DMC26-D19-Smell-Izmir-Invisible-Cloud">kod ve yöntem</a> · yapay zekâ desteğiyle hazırlandı (Claude, Anthropic)</p></footer>
   </aside>
 </div>
 <div id="film" hidden><div id="fq"></div><div id="fc"></div><div id="fa"></div><div id="fs"></div><div id="fclock"></div></div>
-<script type="module" src="app.js?v=7"></script>
+<script type="module" src="app.js?v=8"></script>
 </body>
 </html>

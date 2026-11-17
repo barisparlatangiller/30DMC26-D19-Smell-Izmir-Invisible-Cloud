@@ -44,7 +44,11 @@ def terrain():
     png16(g, W / "dem.png", 20, 50)
     sl = np.clip(T["slope"] / 45 * 255, 0, 255).astype(np.uint8)
     hs = np.clip(T["hs"] * 255, 0, 255).astype(np.uint8)
-    Image.fromarray(np.dstack([hs, sl, (sea * 255).astype(np.uint8)])).save(W / "terr.png", optimize=True)
+    gw = np.load(B / "gulf_w.npy")                                  # sewage signal on the water (100 m) → 30 m
+    gw30 = np.clip(ndi.zoom(gw, (NY / gw.shape[0], NX / gw.shape[1]), order=1) / max(gw.max(), 1e-6), 0, 1)
+    gw30 = ndi.gaussian_filter(gw30, 2) * sea
+    bch = np.where(sea, 128 + np.round(gw30 * 127), 0).astype(np.uint8)   # B: 0 land · 128–255 sea, with the sewage signal
+    Image.fromarray(np.dstack([hs, sl, bch])).save(W / "terr.png", optimize=True)
     return g
 
 
@@ -126,6 +130,7 @@ def odour_atlas():
             for h, t in enumerate(tiles):
                 at[(h // 6) * th:(h // 6 + 1) * th, (h % 6) * tw:(h % 6 + 1) * tw] = t
             Image.fromarray(at).save(d / f"{sc}.png", optimize=True)
+            Image.open(B / "odour" / mm / f"{sc}_gulfshare.png").save(d / f"{sc}_g.png", optimize=True)
     print("atlas", tw, th)
 
 
@@ -189,6 +194,9 @@ def mahalle(b):
         "bld_4h_07_o": int((Ho[days.index("07")] >= 4).sum()),
         "share_any_day": round(float((H >= 1).any(axis=0).mean()), 3),
         "linger_dense": linger(),
+        "gulf_share_07": ST["days"]["07"]["b"]["gulf_share_land"],
+        "gulf_share_min": min(ST["days"][m]["b"]["gulf_share_land"] for m in ST["days_order"]),
+        "gulf_share_max": max(ST["days"][m]["b"]["gulf_share_land"] for m in ST["days_order"]),
     }
     top = sorted([o for o in out if o["b"] >= 150], key=lambda o: -o["h"])[:10]
     ST["top_mahalle"] = top
@@ -208,11 +216,11 @@ def linger():
 def extras():
     from pyproj import Transformer
     tf = Transformer.from_crs(4326, 32635, always_xy=True)
-    inner = np.load(B / "inner_gulf.npy")
-    rr, cc = np.nonzero(inner)
+    gw = np.load(B / "gulf_w.npy"); g = G["G"]
+    rr, cc = np.nonzero(gw > 0); pw = gw[rr, cc] / gw[rr, cc].sum()
     rng = np.random.default_rng(19)
-    k = rng.choice(len(rr), 500, replace=False)
-    ST["gulfpts"] = [[round((cc[i] + rng.random()) * RES), round((rr[i] + rng.random()) * RES)] for i in k]   # x-X0, Y1-y
+    k = rng.choice(len(rr), 600, replace=True, p=pw)
+    ST["gulfpts"] = [[round((cc[i] + rng.random()) * g), round((rr[i] + rng.random()) * g)] for i in k]   # x-X0, Y1-y, weighted by the sewage signal
     L = [("Karşıyaka", 27.112, 38.462, "big"), ("Bayraklı", 27.168, 38.462, "big"), ("Bornova", 27.222, 38.468, "big"), ("Konak", 27.138, 38.414, "big"),
          ("Karabağlar", 27.118, 38.382, "big"), ("Buca", 27.178, 38.386, "big"), ("Balçova", 27.048, 38.392, "big"), ("Narlıdere", 26.995, 38.398, "big"),
          ("Çiğli", 27.062, 38.497, "big"), ("Gaziemir", 27.148, 38.350, "big"), ("İzmir Körfezi", 27.035, 38.438, "water"), ("İç Körfez", 27.115, 38.440, "water")]

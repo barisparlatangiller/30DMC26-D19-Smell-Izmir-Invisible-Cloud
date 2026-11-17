@@ -7,7 +7,8 @@
   "w": 0.8,
   "r": 320,
   "note": "aeration basins mapped in OSM (landuse=basin)",
-  "w0": 1.0
+  "w0": 1.0,
+  "cat": 2
  },
  {
   "name": "Harmandalı Katı Atık Depolama Alanı",
@@ -17,7 +18,8 @@
   "w": 0.8,
   "r": 380,
   "note": "OSM: Harmandalı Çöplüğü, landuse=landfill; biogas plant next to it",
-  "w0": 1.0
+  "w0": 1.0,
+  "cat": 3
  },
  {
   "name": "Karşıyaka Katı Atık Transfer İstasyonu",
@@ -27,7 +29,8 @@
   "w": 0.3,
   "r": 80,
   "note": "OSM landuse=landfill",
-  "w0": 0.3
+  "w0": 0.3,
+  "cat": 3
  },
  {
   "name": "Meles Deresi ağzı",
@@ -37,7 +40,8 @@
   "w": 1.0,
   "r": 120,
   "note": "İzBB gulf station 7, Meles Deresi çıkışı",
-  "w0": 0.6
+  "w0": 0.6,
+  "cat": 1
  },
  {
   "name": "Bornova Çayı ağzı",
@@ -47,7 +51,8 @@
   "w": 0.64,
   "r": 120,
   "note": "stream mouth into the inner gulf (OSM)",
-  "w0": 0.4
+  "w0": 0.4,
+  "cat": 1
  },
  {
   "name": "Manda Çayı ağzı",
@@ -57,7 +62,8 @@
   "w": 0.8,
   "r": 120,
   "note": "stream mouth into the inner gulf (OSM)",
-  "w0": 0.5
+  "w0": 0.5,
+  "cat": 1
  },
  {
   "name": "Büyük Çiğli Deresi ağzı",
@@ -67,7 +73,8 @@
   "w": 0.64,
   "r": 120,
   "note": "stream mouth into the inner gulf (OSM)",
-  "w0": 0.4
+  "w0": 0.4,
+  "cat": 1
  },
  {
   "name": "Küçük Çiğli Deresi ağzı",
@@ -77,7 +84,8 @@
   "w": 0.48,
   "r": 120,
   "note": "stream mouth into the inner gulf (OSM)",
-  "w0": 0.3
+  "w0": 0.3,
+  "cat": 1
  },
  {
   "name": "Gökdere ağzı",
@@ -87,7 +95,8 @@
   "w": 0.48,
   "r": 120,
   "note": "stream mouth into the inner gulf (OSM)",
-  "w0": 0.3
+  "w0": 0.3,
+  "cat": 1
  },
  {
   "name": "Peynircioğlu Deresi ağzı",
@@ -97,6 +106,7 @@
   "w": 0.64,
   "r": 120,
   "note": "stream mouth into the inner gulf (OSM)",
-  "w0": 0.4
+  "w0": 0.4,
+  "cat": 1
  }
 ]

@@ -123,15 +123,22 @@ def main():
         else:
             s_["w"] = round(min(0.9, s_["w0"] * 1.6), 2)
     GULF_K = [k for k, s_ in enumerate(S) if s_["kind"] not in WOVR]       # gulf-side sources (mouths)
+    # source types: 0 gulf water · 1 stream / canal mouths · 2 wastewater plant · 3 landfill + transfer station
+    CAT = {"stream": 1, "wastewater": 2, "landfill": 3, "transfer": 3}
+    for s_ in S:
+        s_["cat"] = CAT[s_["kind"]]
     stations = [{"n": r.ISTASYON_ADI, "x": round(r.x - X0), "y": round(Y1 - r.y), "lg": round(float(r.lg), 2), "n_obs": int(r.n)} for r in sta.itertuples()]
 
-    allc, gshare, stats = {}, {}, {"days": {}}
+    # sea surface temperature (Open-Meteo Marine, nearest gulf cell): warm, still water releases more H₂S
+    sst = pd.read_csv("data/sst_gulf_hourly.csv", skiprows=3); sst.columns = ["t", "sst"]; sst["t"] = pd.to_datetime(sst.t)
+    SST = dict(zip(sst.t, sst.sst))
+    allc, gshare, relc, stats = {}, {}, {}, {"days": {}}
     tracks = None
     for scen in ("b", "o"):
         for mm in days:
             dw = wind[wind.t.dt.strftime("%m") == mm].reset_index(drop=True)
-            P = np.zeros((0, 2)); A = np.zeros(0); M = np.zeros(0); C = np.zeros(0, bool)
-            conc = np.zeros((24, NY, NX), "float32"); concg = np.zeros((24, NY, NX), "float32")
+            P = np.zeros((0, 2)); A = np.zeros(0); M = np.zeros(0); C = np.zeros(0, np.int8)
+            conc = np.zeros((24, NY, NX), "float32"); concc = np.zeros((4, 24, NY, NX), "float32"); rel_ = np.zeros(4)
             film = scen == "b" and mm == "07"
             fx = []
             fields = [field(r.ws10, r.wd10, r.tc, scen == "b") for r in dw.itertuples()]
@@ -139,17 +146,22 @@ def main():
             for k, hr in enumerate([21, 22, 23] + list(range(24))):
                 rec = k >= 3
                 r = dw.iloc[hr]; u, v = fields[hr]
-                warm = max(0.0, (r.tc - 14) / 12)
+                sst_ = SST.get(r.t, np.nan)
+                if np.isnan(sst_):
+                    sst_ = 14 + 0.5 * max(0.0, r.tc - 14)
+                warm = 0.3 + float(np.clip((sst_ - 14) / 8, 0, 1.6))          # water factor: 0.3 at 14 °C, ≈1.7 at 25 °C
                 newp, neww, newc = [], [], []
                 for k_, s in enumerate(S):
-                    n = int(round(REL * s["w"] * (0.6 + 0.4 * min(warm, 1.5) if k_ in GULF_K else 1.0)))
-                    newp.append(src_points(s, n)); neww.append(np.full(n, 1.0)); newc.append(np.full(n, k_ in GULF_K))
-                ng = int(REL * 3.2 * min(0.3 + warm, 2.3))                  # warm, still water smells more (air temperature as proxy)
+                    n = int(round(REL * s["w"] * (0.5 + 0.4 * min(warm, 1.7) if k_ in GULF_K else 1.0)))
+                    newp.append(src_points(s, n)); neww.append(np.full(n, 1.0)); newc.append(np.full(n, s["cat"], np.int8))
+                ng = int(REL * 3.2 * warm)                                   # warm water smells more (sea surface temperature)
                 if ng:
                     kk = gulf_rc[rng.choice(len(gulf_rc), ng, p=gulf_p)]
-                    newp.append(np.c_[kk[:, 1] + rng.uniform(0, 1, ng), kk[:, 0] + rng.uniform(0, 1, ng)]); neww.append(np.full(ng, 0.8)); newc.append(np.ones(ng, bool))
+                    newp.append(np.c_[kk[:, 1] + rng.uniform(0, 1, ng), kk[:, 0] + rng.uniform(0, 1, ng)]); neww.append(np.full(ng, 0.8)); newc.append(np.zeros(ng, np.int8))
                 newp = np.vstack(newp); neww = np.concatenate(neww); newc = np.concatenate(newc)
                 P = np.vstack([P, newp]); A = np.r_[A, -rng.uniform(0, 3600, len(newp))]; M = np.r_[M, neww]; C = np.r_[C, newc]
+                if rec:
+                    rel_ += np.bincount(newc, weights=neww, minlength=4)
                 for st in range(int(3600 / DT)):
                     act = A >= 0
                     if act.any():
@@ -167,13 +179,14 @@ def main():
                         ok = (cc >= 0) & (cc < NX) & (rr2 >= 0) & (rr2 < NY)
                         wgt = M[act][ok] * np.exp(-A[act][ok] / (0.9 * 3600))
                         np.add.at(conc[hr], (rr2[ok], cc[ok]), wgt)
-                        g_ = C[act][ok]; np.add.at(concg[hr], (rr2[ok][g_], cc[ok][g_]), wgt[g_])
+                        np.add.at(concc, (C[act][ok], np.full(ok.sum(), hr), rr2[ok], cc[ok]), wgt)
                         if film and st % 10 == 9:
                             fx.append(np.c_[P[act, 0], P[act, 1], M[act] * np.exp(-A[act] / (0.9 * 3600))].astype("float32"))
             conc = np.stack([ndi.gaussian_filter(c, 1.6) for c in conc])
-            concg = np.stack([ndi.gaussian_filter(c, 1.6) for c in concg])
+            concc = np.stack([[ndi.gaussian_filter(c, 1.6) for c in cat] for cat in concc])
             allc[(scen, mm)] = conc
-            gshare[(scen, mm)] = concg / np.maximum(conc, 1e-9)
+            gshare[(scen, mm)] = (concc / np.maximum(conc, 1e-9)[None]).astype("float32")      # 4 × 24 × NY × NX
+            relc[(scen, mm)] = rel_
             if film:
                 tracks = fx
             print(f"[{time.time() - t0:5.0f} s] {scen} {mm}: max {conc.max():.1f}, particles alive {len(P):,}", flush=True)
@@ -190,13 +203,18 @@ def main():
         hours = (idx >= lvl).sum(axis=0)
         np.save(B / f"hours_{scen}_{mm}.npy", hours)
         Image.fromarray(np.clip(hours * 10, 0, 255).astype("uint8")).save(d / f"{scen}_hours.png", optimize=True)
-        sh = gshare[(scen, mm)]; on = (idx >= lvl) & landG[None]
-        Image.fromarray((np.clip(sh, 0, 1) * 255).astype("uint8").reshape(24 * NY, NX)).save(db / f"{scen}_gulfshare.png")
+        shc = gshare[(scen, mm)]; sh = shc[0] + shc[1]; on = (idx >= lvl) & landG[None]
+        mix = np.clip(shc[:3], 0, 1).transpose(1, 2, 3, 0).reshape(24 * NY, NX, 3)          # R gulf water · G mouths · B plant · (rest) landfill
+        Image.fromarray((mix * 255).round().astype("uint8")).save(db / f"{scen}_mix.png")
+        wsum_ = (idx * on).sum()
+        share_c = [round(float((shc[c] * idx * on).sum() / max(wsum_, 1e-9)), 3) for c in range(4)]
+        rl = relc[(scen, mm)]
         e = stats["days"].setdefault(mm, {})
         e[scen] = {"km2_1h": round(float(((hours >= 1) & landG).sum() * G * G / 1e6), 2),
                    "km2_4h": round(float(((hours >= 4) & landG).sum() * G * G / 1e6), 2),
                    "km2_8h": round(float(((hours >= 8) & landG).sum() * G * G / 1e6), 2),
                    "gulf_share_land": round(float((sh * idx * on).sum() / max((idx * on).sum(), 1e-9)), 3),
+                   "share_by_type": share_c, "released_by_type": [round(float(x / rl.sum()), 3) for x in rl],
                    "land_km2_by_hour": [round(float(((idx[h] >= lvl) & landG).sum() * G * G / 1e6), 2) for h in range(24)]}
     # winds for the web: 500 m grid per hour, both scenarios
     (W / "wind").mkdir(exist_ok=True)

@@ -130,7 +130,12 @@ def odour_atlas():
             for h, t in enumerate(tiles):
                 at[(h // 6) * th:(h // 6 + 1) * th, (h % 6) * tw:(h % 6 + 1) * tw] = t
             Image.fromarray(at).save(d / f"{sc}.png", optimize=True)
-            Image.open(B / "odour" / mm / f"{sc}_gulfshare.png").save(d / f"{sc}_g.png", optimize=True)
+            mx = np.asarray(Image.open(B / "odour" / mm / f"{sc}_mix.png"))          # (24·NY, NX, 3) shares of gulf water, mouths, plant
+            am = np.zeros((th * 4, tw * 6, 3), np.uint8)
+            for h in range(24):
+                am[(h // 6) * th:(h // 6 + 1) * th, (h % 6) * tw:(h % 6 + 1) * tw] = mx[h * th:(h + 1) * th]
+            Image.fromarray(am).save(d / f"{sc}_mix.png", optimize=True)
+            (d / f"{sc}_g.png").unlink(missing_ok=True)
     print("atlas", tw, th)
 
 

@@ -21,6 +21,9 @@ MAP_Y, MAP_H = 196, 1004
 SX, SY, X0, Y1 = 33000, 22800, 491700, 4266300
 BG = (18, 26, 42)
 INK, INK2, INK3, ACC = (236, 230, 214), (170, 176, 190), (124, 132, 150), (227, 196, 74)
+TYPES = [((227, 196, 74), "Gulf water", "wave"), ((217, 138, 78), "Stream & canal mouths", "drop"), ((143, 191, 159), "Wastewater plant", "gear"),
+         ((180, 143, 184), "Landfill & transfer station", "bin")]
+TCOL = np.array([t[0] for t in TYPES], float)
 RAMP = [(0, (246, 240, 184)), (0.35, (240, 220, 114)), (0.6, (227, 196, 74)), (0.85, (179, 154, 54)), (1, (127, 109, 42))]
 DAY = "07"
 ST = json.loads((D / "stats.json").read_text())
@@ -123,6 +126,44 @@ ODO = [np.asarray(Image.open(B / "odour" / DAY / f"b_{h:02d}.png")).astype(float
 ODO = [o * o for o in ODO]
 
 
+MIX = np.asarray(Image.open(B / "odour" / DAY / "b_mix.png")).astype(float) / 255     # (24·NY, NX, 3)
+NYo = MIX.shape[0] // 24
+MIX = [MIX[h * NYo:(h + 1) * NYo] for h in range(24)]
+
+
+def type_colour(h, v, o):
+    """colour of the cloud: shares of the four source types at each pixel"""
+    h0 = int(math.floor(h)) % 24; f = h - math.floor(h)
+    m = MIX[h0] * (1 - f) + MIX[(h0 + 1) % 24] * f
+    x0, y0 = v.lx0 / 100, v.ly0 / 100
+    ch = [np.asarray(Image.fromarray(m[..., c].astype("float32"), "F").resize((W, MAP_H), Image.BILINEAR, box=(x0, y0, x0 + v.span / 100, y0 + MAP_H * v.px / 100))) for c in range(3)]
+    sh = np.stack(ch + [np.clip(1 - ch[0] - ch[1] - ch[2], 0, 1)], -1)
+    sh = sh / np.maximum(sh.sum(-1, keepdims=True), 1e-6)
+    return (sh @ TCOL) * (0.82 + 0.38 * np.clip(o * 1.6, 0, 1))[..., None]
+
+
+def draw_icon(d, kind, x, y, r, col, a=255):
+    """simple source symbols: wave · drop · gear · bin, on a dark disc"""
+    c = col + (a,)
+    d.ellipse([x - r - 5, y - r - 5, x + r + 5, y + r + 5], fill=(18, 26, 42, int(a * 0.85)), outline=(255, 255, 255, int(a * 0.25)), width=1)
+    w = max(2, int(r / 4))
+    if kind == "wave":
+        for dy in (-r * 0.35, r * 0.35):
+            pts = [(x - r + i * 2 * r / 16, y + dy + math.sin(i / 16 * 2 * math.pi * 1.5) * r * 0.25) for i in range(17)]
+            d.line(pts, fill=c, width=w, joint="curve")
+    elif kind == "drop":
+        pts = [(x, y - r)] + [(x + math.sin(t) * r * 0.62, y + r * 0.25 - math.cos(t) * r * 0.62) for t in np.linspace(0.6, 2 * math.pi - 0.6, 20)]
+        d.polygon(pts, fill=c)
+    elif kind == "gear":
+        for t in np.linspace(0, math.pi, 4, endpoint=False):
+            d.line([(x - math.cos(t) * r, y - math.sin(t) * r), (x + math.cos(t) * r, y + math.sin(t) * r)], fill=c, width=w)
+        d.ellipse([x - r * 0.55, y - r * 0.55, x + r * 0.55, y + r * 0.55], fill=(18, 26, 42, a), outline=c, width=w)
+    else:
+        d.line([(x - r * 0.8, y - r * 0.6), (x + r * 0.8, y - r * 0.6)], fill=c, width=w)
+        d.polygon([(x - r * 0.6, y - r * 0.5), (x + r * 0.6, y - r * 0.5), (x + r * 0.45, y + r), (x - r * 0.45, y + r)], outline=c, width=w)
+        d.line([(x - r * 0.3, y - r * 0.6), (x - r * 0.3, y - r * 0.9), (x + r * 0.3, y - r * 0.9), (x + r * 0.3, y - r * 0.6)], fill=c, width=w)
+
+
 def odour_field(h, v):
     h0 = int(math.floor(h)) % 24; f = h - math.floor(h)
     o = ODO[h0] * (1 - f) + ODO[(h0 + 1) % 24] * f
@@ -167,12 +208,12 @@ class Drift:
     def __init__(self):
         self.sp = [(s["x"] - X0, Y1 - s["y"], s["r"], s["w"]) for s in SRC]
         self.wc = np.cumsum([s[3] for s in self.sp]); self.gulf = np.array(ST["gulfpts"], float)
-        self.x = np.zeros(self.NP); self.y = np.zeros(self.NP); self.age = np.zeros(self.NP); self.life = np.ones(self.NP); self.g = np.zeros(self.NP, bool); self.mouth = np.zeros(self.NP, bool)
+        self.x = np.zeros(self.NP); self.y = np.zeros(self.NP); self.age = np.zeros(self.NP); self.life = np.ones(self.NP); self.g = np.zeros(self.NP, bool); self.cat = np.zeros(self.NP, int)
         self.tr = np.full((self.TRAIL, self.NP, 2), np.nan)
         self.spawn(np.arange(self.NP), warm=0.3); self.age = rng.random(self.NP) * self.life
 
     def spawn(self, idx, warm=0.3):
-        n = len(idx); tot = self.wc[-1] + 3.2 * min(0.3 + warm, 2.3)
+        n = len(idx); tot = self.wc[-1] + 3.2 * warm
         r = rng.random(n) * tot; gl = r > self.wc[-1]
         k = np.searchsorted(self.wc, np.minimum(r, self.wc[-1] - 1e-9))
         a = rng.random(n) * 6.283; dd = np.array([self.sp[j][2] for j in k]) * np.sqrt(rng.random(n))
@@ -180,7 +221,7 @@ class Drift:
         self.y[idx] = np.array([self.sp[j][1] for j in k]) + np.sin(a) * dd
         gi = idx[gl]; gp = self.gulf[rng.integers(0, len(self.gulf), len(gi))]
         self.x[gi] = gp[:, 0] + rng.normal(0, 40, len(gi)); self.y[gi] = gp[:, 1] + rng.normal(0, 40, len(gi))
-        self.g[idx] = gl; self.mouth[idx] = np.array([SRC[j]["kind"] == "stream" for j in k]) & ~gl; self.age[idx] = 0; self.life[idx] = 3 + rng.random(n) * 4; self.tr[:, idx] = np.nan
+        self.g[idx] = gl; self.cat[idx] = np.where(gl, 0, np.array([SRC[j]["cat"] for j in k])); self.age[idx] = 0; self.life[idx] = 3 + rng.random(n) * 4; self.tr[:, idx] = np.nan
 
     def step(self, h, dt, warm):
         self.age += dt
@@ -203,7 +244,7 @@ class Drift:
             if ok.sum() < 2:
                 continue
             px, py = v.xy(seg[ok, 0], seg[ok, 1]); py = py + MAP_Y
-            col = (217, 191, 78) if (self.g[j] or self.mouth[j]) else (246, 236, 158)
+            col = tuple(int(c * 0.82 + 255 * 0.18) for c in TYPES[self.cat[j]][0])
             n = len(px)
             for s in range(n - 1):
                 a = int(255 * fade[j] * (1 - s / n) * 0.5)
@@ -233,7 +274,7 @@ def main():
         m1 = noise(v, t, 0, 60, dx, dy); m2 = noise(v, t, 1, 26, dx * 1.6, dy * 1.6)
         dens = np.clip((o - 0.01) / 0.32, 0, 1); dens = dens * dens * (3 - 2 * dens)
         a = np.clip(dens * (0.62 + 1.2 * m1 * m2), 0, 0.9) * od_a
-        col = ramp(np.clip(o * 1.15, 0, 1)) * (0.9 + 0.2 * m1[..., None])
+        col = type_colour(h, v, o) * (0.9 + 0.2 * m1[..., None])
         img = img * (1 - a[..., None]) + col * a[..., None]
         im = Image.new("RGB", (W, H), BG); im.paste(Image.fromarray(np.clip(img, 0, 255).astype("uint8")), (0, MAP_Y))
         if drift_a > 0:
@@ -248,13 +289,27 @@ def main():
                 x, y = v.xy(lx, ly + 900)
                 if 30 < x < W - 30 and 30 < y < MAP_H - 30:
                     d.text((x, y + MAP_Y), n, font=F["lab"], fill=(150, 205, 205, int(230 * labels)), anchor="mm", stroke_width=3, stroke_fill=BG + (int(200 * labels),))
+            la = int(255 * labels)
+            for st_ in ST["stations"]:                                         # gulf monitoring stations: wave, size = sewage signal
+                x, y = v.xy(st_["x"], st_["y"]); y += MAP_Y
+                if 20 < x < W - 20 and MAP_Y + 20 < y < MAP_Y + MAP_H - 20:
+                    draw_icon(d, "wave", x, y, 6 + 6 * (st_["lg"] - 0.6) / 0.9, TYPES[0][0], la)
             for s in SRC:
-                if s["name"] in SHORT:
-                    x, y = v.xy(s["x"] - X0, Y1 - s["y"]); y += MAP_Y
-                    if 0 < x < W and MAP_Y < y < MAP_Y + MAP_H:
-                        d.ellipse([x - 7, y - 7, x + 7, y + 7], fill=ACC + (int(255 * labels),), outline=(255, 245, 200, int(160 * labels)), width=2)
-                        tx = x + 14 if x < W - 300 else x - 14
-                        d.text((tx, y), SHORT[s["name"]], font=F["lab"], fill=(240, 220, 122, int(255 * labels)), anchor="lm" if x < W - 300 else "rm", stroke_width=3, stroke_fill=BG)
+                x, y = v.xy(s["x"] - X0, Y1 - s["y"]); y += MAP_Y
+                if 20 < x < W - 20 and MAP_Y + 20 < y < MAP_Y + MAP_H - 20:
+                    r = 7 + 9 * s["w"]
+                    draw_icon(d, TYPES[s["cat"]][2], x, y, r, TYPES[s["cat"]][0], la)
+                    if s["name"] in SHORT:
+                        tx = x + r + 10 if x < W - 300 else x - r - 10
+                        if s["cat"] == 2:
+                            y -= 22                                       # clear of the stream mouth next to the plant
+                        d.text((tx, y), SHORT[s["name"]], font=F["lab"], fill=tuple(min(255, int(c * 0.6 + 100)) for c in TYPES[s["cat"]][0]) + (la,), anchor="lm" if x < W - 300 else "rm", stroke_width=3, stroke_fill=BG)
+            # legend: four source types
+            lx_, ly_ = 30, MAP_Y + MAP_H - 30 - 4 * 34
+            d.rounded_rectangle([lx_ - 12, ly_ - 18, lx_ + 330, MAP_Y + MAP_H - 18], 16, fill=(18, 26, 42, int(210 * labels)))
+            for i, (c, nm, kind) in enumerate(TYPES):
+                draw_icon(d, kind, lx_ + 12, ly_ + i * 34 + 6, 9, c, la)
+                d.text((lx_ + 38, ly_ + i * 34 + 6), nm, font=F["labs"], fill=INK + (la,), anchor="lm")
         # header
         d.rectangle([0, 0, W, MAP_Y], fill=BG)
         d.text((48, 36), "#30DAYMAPCHALLENGE · DAY 19 · SMELL · İZMIR", font=F["qs"], fill=ACC)
@@ -294,8 +349,12 @@ def main():
         nonlocal n
         im.save(fr / f"f{n:04d}.jpg", quality=92); n += 1
 
+    import pandas as pd
+    sst = pd.read_csv("data/sst_gulf_hourly.csv", skiprows=3); sst.columns = ["t", "sst"]
+    SSTD = sst[sst.t.str.startswith("2026-07-21")].sst.tolist()
+
     def warm_at(h):
-        i = int(h) % 24; return max(0.0, (WIND["T"][i] - 14) / 12)
+        return 0.3 + float(np.clip((SSTD[int(h) % 24] - 14) / 8, 0, 1.6))
 
     for _ in range(int(FPS * 2)):
         drift.step(0.0, 1 / FPS, warm_at(0))
@@ -311,7 +370,7 @@ def main():
     # B · the day, 00 → 24
     NB = int(FPS * 13.0)
     PH = [(0, 7, ("Night: calm air", "slides down the slopes to the gulf")), (7, 12, ("Morning: the wind turns", "the cloud hangs over the shore")),
-          (12, 20, ("Afternoon: the imbat", "carries the gulf's smell into Konak, Bayraklı, Bornova")), (20, 24.1, ("Evening: the wind drops", "the cloud settles over the north shore"))]
+          (12, 20, ("Afternoon: the imbat", "carries the shore's smell into Konak and Bornova")), (20, 24.1, ("Evening: the wind drops", "the cloud settles over the north shore"))]
     for k in range(NB):
         h = 24 * k / NB; T += 1 / FPS
         drift.step(h, 1 / FPS, warm_at(h))
@@ -322,7 +381,12 @@ def main():
             im.save(OUT / "still_imbat.png"); cover = im
     # C · close-up of the north shore (16:00 → 17:30)
     NC = int(FPS * 5.0)
-    top = ST["top_mahalle"][:3]
+    top = []
+    for m in ST["top_mahalle"]:                                      # three best, at least 2 km apart
+        if all(math.hypot(m["c"][0] - o["c"][0], m["c"][1] - o["c"][1]) > 2000 for o in top):
+            top.append(m)
+        if len(top) == 3:
+            break
     for k in range(NC):
         u = ease(k / (FPS * 2.4)); v = FULL.lerp(ZOOM, u); h = 16 + 1.5 * k / NC; T += 1 / FPS
         drift.step(h, 1 / FPS, warm_at(h))
@@ -356,12 +420,14 @@ def main():
             d.text((W // 2, MAP_Y + 118), "İzmir · 21 July · modelled odour drift", font=F["sm"], fill=INK2, anchor="ma")
             d.text((W // 2, MAP_Y + 176), f"{hl['bld_4h_07_b']:,}", font=F["big"], fill=ACC, anchor="ma")
             d.text((W // 2, MAP_Y + 318), "buildings sit in the cloud for 4 h or more", font=F["sm"], fill=INK, anchor="ma")
-            d.text((W // 2, MAP_Y + 390), f"{hl['gulf_share_07'] * 100:.0f}%", font=F["num"], fill=ACC, anchor="ma")
-            d.text((W // 2, MAP_Y + 474), "of the odour over land comes from", font=F["sm"], fill=INK, anchor="ma")
-            d.text((W // 2, MAP_Y + 508), "the gulf and its sewage-fed stream mouths", font=F["sm"], fill=INK, anchor="ma")
-            d.text((W // 2, MAP_Y + 584), f"{hl['share_any_day'] * 100:.0f}%", font=F["num"], fill=ACC, anchor="ma")
-            d.text((W // 2, MAP_Y + 668), "of buildings smell it on at least one", font=F["sm"], fill=INK, anchor="ma")
-            d.text((W // 2, MAP_Y + 702), "of 12 sample days", font=F["sm"], fill=INK, anchor="ma")
+            d.text((W // 2, MAP_Y + 384), "Where the smell over land comes from", font=F["mid"], fill=INK, anchor="ma")
+            sb = ST["days"][DAY]["b"]["share_by_type"]
+            for i, (c, nm, kind) in enumerate(TYPES):
+                y = MAP_Y + 456 + i * 74
+                draw_icon(d, kind, 96, y + 16, 13, c)
+                d.text((132, y), nm, font=F["sm"], fill=INK)
+                d.rounded_rectangle([132, y + 40, 132 + int(700 * sb[i] / max(sb)), y + 52], 6, fill=c)
+                d.text((W - 72, y + 4), f"{sb[i] * 100:.0f}%", font=F["mid"], fill=c, anchor="ra")
             d.text((W // 2, MAP_Y + 790), "Any day, any hour, in 3D: barisparlatangiller.github.io", font=F["lab"], fill=INK2, anchor="ma")
             d.text((W // 2, MAP_Y + 830), "A scenario, not a measurement", font=F["lab"], fill=INK3, anchor="ma")
         im = compose(ZOOM, 17.5, "The invisible cloud over İzmir", "the gulf · wind · slopes · 323,318 buildings", labels=0.6 * (1 - a), clock=k < 4, overlay=ov, t=T, drift_a=1 - a * 0.7)

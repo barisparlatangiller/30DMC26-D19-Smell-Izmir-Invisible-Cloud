@@ -9,7 +9,7 @@
 <meta property="og:description" content="Where does the smell go? A 3D odour-drift scenario for İzmir: wind, slopes, buildings and trees, hour by hour on 12 days of the year.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 </head>
 <body>
@@ -43,9 +43,9 @@
       <p class="lede">Sewage-fed streams and canals empty into the shallow <b>inner gulf</b>. On a hot July afternoon the <b>imbat</b>, the sea breeze from the north-west, picks up the smell of the water, the stream mouths, a <b>wastewater plant</b> and a <b>landfill</b> and pushes it into the city. Where does it go, hour by hour?</p>
     </header>
     <div class="stats">
-      <div class="st"><b class="mono">96,647</b><span>buildings inside the cloud for 4 h or more on 21 July</span></div>
+      <div class="st"><b class="mono">91,095</b><span>buildings inside the cloud for 4 h or more on 21 July</span></div>
       <div class="st"><b class="mono">88%</b><span>of the odour over land comes from the gulf and its stream mouths (21 July)</span></div>
-      <div class="st"><b class="mono">86%</b><span>of buildings get at least one odour hour on one of the 12 sample days</span></div>
+      <div class="st"><b class="mono">82%</b><span>of buildings get at least one odour hour on one of the 12 sample days</span></div>
     </div>
 
     <section class="block" id="detail" hidden></section>
@@ -53,6 +53,12 @@
     <section class="block">
       <div class="seg seg2" id="scenSeg"><button data-s="b" class="on">With buildings</button><button data-s="o">Bare terrain</button></div>
       <p class="hint">Buildings slow the wind near the ground, so the cloud lingers longer in dense blocks: +6% more odour there on 21 July.</p>
+    </section>
+
+    <section class="block">
+      <h2 class="label">Sources &amp; strength · this day</h2>
+      <ul class="srcs" id="srcs"></ul>
+      <p class="hint">Pale bar: share of the odour each type puts into the air (model weights). Strong bar and %: share of the odour that reaches land. The gulf water releases a lot, but much of it stays over the sea; the stream mouths sit on the shore.</p>
     </section>
 
     <section class="block">
@@ -88,24 +94,24 @@
 
     <details class="howto" open>
       <summary>How to read this map</summary>
-      <ol><li><b>Yellow haze</b> is the modelled odour cloud near the ground: pale lemon where it is faint, sulfur yellow where it is strong, olive brown where it is densest.</li><li><b>Moving streaks</b> show where the air carries it this hour (sped up): deeper yellow from the gulf and the stream mouths, pale lemon from the plant and the landfill. <b>Murky olive water</b> marks where the gulf's sewage signal is highest.</li><li>Pick a <b>day</b> and an <b>hour</b>. In summer the imbat blows from the north-west in the afternoon; at night the wind drops and the air slides down the slopes to the gulf.</li><li><b>Click</b> anywhere: odour now, odour hours that day, wind and the neighbourhood.</li></ol>
+      <ol><li>The <b>haze</b> is the modelled odour cloud near the ground. Its <b>colour shows where it comes from</b>: yellow from the gulf water, orange from the stream and canal mouths, sage from the wastewater plant, mauve from the landfill. Thicker and brighter means stronger.</li><li><b>Symbols</b> mark the sources; a bigger symbol is a stronger source. Small wave symbols are the 11 gulf monitoring stations (hover for the sewage value). <b>Moving streaks</b> show where the air carries the smell this hour, in the same colours. <b>Murky olive water</b> marks where the sewage signal is highest.</li><li>Pick a <b>day</b> and an <b>hour</b>. In summer the imbat blows from the north-west in the afternoon; at night the wind drops and the air slides down the slopes to the gulf.</li><li><b>Click</b> anywhere: odour now, odour hours that day, wind and the neighbourhood.</li></ol>
     </details>
     <details class="howto">
       <summary>Method, data &amp; limits</summary>
-      <p><b>Wind.</b> Hourly 10 m wind, temperature and humidity for the 21st of every month, Nov 2025 – Oct 2026 (Open-Meteo, one point in the gulf). On the map the wind slows and turns where it would have to climb a steep slope, speeds up over open ridges and the sea, and drains down the slopes on calm nights.</p><p><b>Buildings.</b> 323,318 OSM footprints. Heights from OSM tags where mapped (282), otherwise from GHSL GHS-BUILT-H 2018 (100 m). In the “with buildings” scenario dense, tall blocks slow the wind near the ground to 40–70% of the open value.</p><p><b>The gulf.</b> The water near the shore releases odour in proportion to the sewage signal measured by İzmir Metropolitan Municipality at 11 gulf stations (median faecal coliform and E. coli, 2012–2026, about 340 samples per station). The signal is spread over the water by distance and fades 1–2 km offshore; it is highest off Meles, Bayraklı, Karşıyaka pier and Konak. Warm air (a proxy for warm, still water) makes it stronger. <b>Other sources</b>, relative weights, not emissions: stream and canal mouths that carry sewage overflow (Meles 1.0, six others 0.5–0.8), Çiğli wastewater plant (0.8), Harmandalı landfill (0.8), Karşıyaka transfer station (0.3).</p><p><b>Model.</b> Particles are released every hour, carried by the wind in 1-minute steps with turbulent spread, and fade over about an hour. The odour index is the particle density per 100 m cell, scaled 0–1 over all days. “Odour hour” = index ≥ 0.15.</p>
+      <p><b>Wind.</b> Hourly 10 m wind, temperature and humidity for the 21st of every month, Nov 2025 – Oct 2026 (Open-Meteo, one point in the gulf). On the map the wind slows and turns where it would have to climb a steep slope, speeds up over open ridges and the sea, and drains down the slopes on calm nights.</p><p><b>Buildings.</b> 323,318 OSM footprints. Heights from OSM tags where mapped (282), otherwise from GHSL GHS-BUILT-H 2018 (100 m). In the “with buildings” scenario dense, tall blocks slow the wind near the ground to 40–70% of the open value.</p><p><b>The gulf.</b> The water near the shore releases odour in proportion to the sewage signal measured by İzmir Metropolitan Municipality at 11 gulf stations (median faecal coliform and E. coli, 2012–2026, about 340 samples per station). The signal is spread over the water by distance and fades 1–2 km offshore; it is highest off Meles, Bayraklı, Karşıyaka pier and Konak. A warmer sea makes it stronger: hourly sea surface temperature from Open-Meteo Marine, from about 0.3× at 14 °C in winter to 1.7× at 25 °C in July. <b>Other sources</b>, relative weights, not emissions: stream and canal mouths that carry sewage overflow (Meles 1.0, six others 0.5–0.8), Çiğli wastewater plant (0.8), Harmandalı landfill (0.8), Karşıyaka transfer station (0.3).</p><p><b>Model.</b> Particles are released every hour, carried by the wind in 1-minute steps with turbulent spread, and fade over about an hour. The odour index is the particle density per 100 m cell, scaled 0–1 over all days. “Odour hour” = index ≥ 0.15.</p>
     </details>
     <details class="howto">
       <summary>Limits</summary>
-      <p>This is a <b>scenario</b>: a way to see how wind, slopes and buildings move air. It is not an odour measurement, an H₂S map or a forecast. There are no public emission rates for these sources, so all sources use relative weights.</p><p>One wind point for the whole area, a simple terrain rule instead of a flow model (no CFD), building heights partly estimated. The gulf's smell depends on water temperature, oxygen and algae, which are only proxied by air temperature here. Coliform counts show sewage in the water, not the smell itself: they are used only to say where along the shore the water is dirtiest.</p><p>Terrain: Copernicus DEM GLO-30. Trees are OSM trees, tree rows and points placed in mapped woods and orchards.</p>
+      <p>This is a <b>scenario</b>: a way to see how wind, slopes and buildings move air. It is not an odour measurement, an H₂S map or a forecast. There are no public emission rates for these sources, so all sources use relative weights.</p><p>One wind point for the whole area, a simple terrain rule instead of a flow model (no CFD), building heights partly estimated. The gulf's smell depends on water temperature, oxygen and algae, which are only proxied here by the sea surface temperature of one model cell. Coliform counts show sewage in the water, not the smell itself: they are used only to say where along the shore the water is dirtiest.</p><p>Terrain: Copernicus DEM GLO-30. Trees are OSM trees, tree rows and points placed in mapped woods and orchards.</p>
     </details>
     <details class="howto">
       <summary>Sources</summary>
-      <ol class="refs"><li>Wind &amp; weather: <a href="https://open-meteo.com/">Open-Meteo</a> historical API, 38.49 N 27.11 E (CC BY 4.0).</li><li>Terrain: Copernicus DEM GLO-30, © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018, provided under COPERNICUS by the European Union and ESA.</li><li>Building height: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, European Commission JRC.</li><li>Buildings, trees, streams, roads, neighbourhoods: © OpenStreetMap contributors, ODbL.</li><li>Gulf water quality (faecal coliform, E. coli, 11 stations, 2012–2026): İzmir Büyükşehir Belediyesi Açık Veri Portalı.</li><li>District boundaries: geoBoundaries ADM2 Türkiye (Runfola et al. 2020), from OpenStreetMap, ODbL.</li></ol>
+      <ol class="refs"><li>Wind &amp; weather: <a href="https://open-meteo.com/">Open-Meteo</a> historical API, 38.49 N 27.11 E (CC BY 4.0).</li><li>Terrain: Copernicus DEM GLO-30, © DLR e.V. 2010–2014 and © Airbus Defence and Space GmbH 2014–2018, provided under COPERNICUS by the European Union and ESA.</li><li>Building height: Pesaresi, M., Politis, P. (2023). GHS-BUILT-H R2023A, European Commission JRC.</li><li>Buildings, trees, streams, roads, neighbourhoods: © OpenStreetMap contributors, ODbL.</li><li>Gulf water quality (faecal coliform, E. coli, 11 stations, 2012–2026): İzmir Büyükşehir Belediyesi Açık Veri Portalı.</li><li>District boundaries: geoBoundaries ADM2 Türkiye (Runfola et al. 2020), from OpenStreetMap, ODbL.</li><li>Sea surface temperature: <a href="https://open-meteo.com/en/docs/marine-weather-api">Open-Meteo Marine</a>, hourly (CC BY 4.0).</li></ol>
     </details>
     <footer class="foot"><p>Barış Parlatangiller · <a href="https://barisparlatangiller.github.io/">all 30 maps</a> · <a href="https://github.com/barisparlatangiller/30DMC26-D19-Smell-Izmir-Invisible-Cloud">code &amp; method</a> · built with AI assistance (Claude, Anthropic)</p></footer>
   </aside>
 </div>
 <div id="film" hidden><div id="fq"></div><div id="fc"></div><div id="fa"></div><div id="fs"></div><div id="fclock"></div></div>
-<script type="module" src="app.js?v=8"></script>
+<script type="module" src="app.js?v=9"></script>
 </body>
 </html>

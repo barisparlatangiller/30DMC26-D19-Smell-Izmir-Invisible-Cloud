@@ -13,6 +13,18 @@ const STEP = LITE ? 2 : 1;
 const BG = '#121a2a';
 const MONTHS = TR ? ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'] : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const ODOUR = [[0,'#f6f0b8'],[0.35,'#f0dc72'],[0.6,'#e3c44a'],[0.85,'#b39a36'],[1,'#7f6d2a']];   // pale lemon → sulfur → olive brown
+// source types: 0 gulf water · 1 stream / canal mouths · 2 wastewater plant · 3 landfill + transfer station
+const TYPES = [
+  { c: '#e3c44a', en: 'Gulf water', tr: 'Körfez suyu', ic: 'wave' },
+  { c: '#d98a4e', en: 'Stream & canal mouths', tr: 'Dere ve kanal ağızları', ic: 'drop' },
+  { c: '#8fbf9f', en: 'Wastewater plant', tr: 'Atıksu arıtma', ic: 'gear' },
+  { c: '#b48fb8', en: 'Landfill & transfer station', tr: 'Çöplük ve transfer istasyonu', ic: 'bin' }];
+const ICON = {
+  wave: '<path d="M2 9c2-2.5 4-2.5 6 0s4 2.5 6 0 4-2.5 6 0M2 14c2-2.5 4-2.5 6 0s4 2.5 6 0 4-2.5 6 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+  drop: '<path d="M11 2.5C8 7 5.5 10 5.5 13.5a5.5 5.5 0 0 0 11 0C16.5 10 14 7 11 2.5z" fill="currentColor"/>',
+  gear: '<circle cx="11" cy="11" r="3.2" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M11 2.5v3M11 16.5v3M2.5 11h3M16.5 11h3M5 5l2.1 2.1M14.9 14.9 17 17M5 17l2.1-2.1M14.9 7.1 17 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+  bin: '<path d="M4 6h14M8.5 6V3.8h5V6M5.8 6l1 12.5h8.4l1-12.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M9.3 9.5v6M12.7 9.5v6" stroke="currentColor" stroke-width="1.8"/>' };
+const icon = (t, size = 16) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 22 22" style="color:${TYPES[t].c}" aria-hidden="true">${ICON[TYPES[t].ic]}</svg>`;
 const fmt = n => n.toLocaleString(TR ? 'tr-TR' : 'en-GB');
 
 if (FILM) { let a = 19190721; Math.random = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -87,15 +99,18 @@ const terrT = new THREE.DataTexture(flipRows(terrP.d, NX, NY), NX, NY, THREE.RGB
 // odour atlas (24 hours, 6 × 4 tiles), one per day and scenario
 const odourT = new THREE.DataTexture(new Uint8Array(ONX*6*ONY*4*4), ONX*6, ONY*4, THREE.RGBAFormat);
 odourT.magFilter = odourT.minFilter = THREE.LinearFilter;
+const mixT = new THREE.DataTexture(new Uint8Array(ONX*6*ONY*4*4), ONX*6, ONY*4, THREE.RGBAFormat);   // shares by source type, same atlas layout
+mixT.magFilter = mixT.minFilter = THREE.LinearFilter;
 let ATLAS = null, GSH = null, WIND = null;
 const cache = {};
 async function loadDay(day, scen) {
   const k = day + scen;
-  if (!cache[k]) cache[k] = Promise.all([pixels(`data/odour/${day}/${scen}.png`), pixels(`data/odour/${day}/${scen}_g.png`), cache['w'+day] || (cache['w'+day] = fetch(`data/wind/${day}.json`).then(r => r.json()))]);
+  if (!cache[k]) cache[k] = Promise.all([pixels(`data/odour/${day}/${scen}.png`), pixels(`data/odour/${day}/${scen}_mix.png`), cache['w'+day] || (cache['w'+day] = fetch(`data/wind/${day}.json`).then(r => r.json()))]);
   const [a, gs, w] = await cache[k];
   if (S.day !== day || S.scen !== scen) return;
   ATLAS = a; GSH = gs; WIND = w;
   odourT.image.data.set(flipRows(a.d, a.w, a.h)); odourT.needsUpdate = true;
+  mixT.image.data.set(flipRows(gs.d, gs.w, gs.h)); mixT.needsUpdate = true;
   onDay();
 }
 // odour index at a point and hour, CPU side (sqrt-scaled PNG → index)
@@ -106,10 +121,11 @@ function odourAt(lx, ly, h) {
   const v = ATLAS.d[(y*ATLAS.w + x)*4] / 255; return v*v;
 }
 // share of the odour that comes from the gulf and its stream mouths (0–1)
-function gulfShareAt(lx, ly, h) {
-  if (!GSH) return 0;
+function sharesAt(lx, ly, h) {
+  if (!GSH) return [0, 0, 0, 0];
   const c = Math.min(ONX-1, Math.max(0, (lx/OG)|0)), r = Math.min(ONY-1, Math.max(0, (ly/OG)|0)), hh = ((h|0) % 24 + 24) % 24;
-  return GSH.d[((hh*ONY + r)*ONX + c)*4] / 255;
+  const x = (hh % 6)*ONX + c, y = ((hh/6)|0)*ONY + r, i = (y*GSH.w + x)*4;
+  const a = GSH.d[i]/255, b = GSH.d[i+1]/255, d = GSH.d[i+2]/255; return [a, b, d, Math.max(0, 1 - a - b - d)];
 }
 // wind at a point (500 m grid, linear in time)
 function windAt(lx, ly, h) {
@@ -128,11 +144,19 @@ const ODOUR_GLSL = `uniform sampler2D odT; uniform float hour;
     vec2 t=clamp(uv,vec2(0.5/${ONX}.,0.5/${ONY}.),vec2(1.-0.5/${ONX}.,1.-0.5/${ONY}.));
     vec2 a=vec2((c+t.x)/6., 1.-(r+1.-t.y)/4.); float v=texture2D(odT,a).r; return v*v; }
   float odour(vec2 uv){ float h0=floor(hour), f=hour-h0; return mix(odTile(uv,mod(h0,24.)),odTile(uv,mod(h0+1.,24.)),f); }
+  uniform sampler2D mxT;
+  vec3 mxTile(vec2 uv, float h){ float c=mod(h,6.), r=floor(h/6.);
+    vec2 t=clamp(uv,vec2(0.5/${ONX}.,0.5/${ONY}.),vec2(1.-0.5/${ONX}.,1.-0.5/${ONY}.));
+    return texture2D(mxT,vec2((c+t.x)/6., 1.-(r+1.-t.y)/4.)).rgb; }
+  vec3 typeCol(vec2 uv, float o){ float h0=floor(hour), f=hour-h0; vec3 s=mix(mxTile(uv,mod(h0,24.)),mxTile(uv,mod(h0+1.,24.)),f);
+    float l=max(0.,1.-s.r-s.g-s.b);
+    vec3 c=s.r*${v3(hex('#e3c44a'))}+s.g*${v3(hex('#d98a4e'))}+s.b*${v3(hex('#8fbf9f'))}+l*${v3(hex('#b48fb8'))};
+    return c*(0.82+0.38*clamp(o*1.6,0.,1.)); }
   ${rampGLSL('odRamp', ODOUR)}`;
 const NOISE = `float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
   float vn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f); return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }
   float fbm(vec2 p){ return 0.5*vn(p)+0.28*vn(p*2.03)+0.14*vn(p*4.1)+0.08*vn(p*8.3); }`;
-const uniCommon = () => ({ ex: { value: S.ex }, light: { value: LIGHT }, fogC: { value: FOG }, fogD: { value: FOGD }, odT: { value: odourT }, hour: { value: S.h } });
+const uniCommon = () => ({ ex: { value: S.ex }, light: { value: LIGHT }, fogC: { value: FOG }, fogD: { value: FOGD }, odT: { value: odourT }, mxT: { value: mixT }, hour: { value: S.h } });
 
 // ---------- terrain ----------
 function buildTerrain() {
@@ -164,7 +188,7 @@ const terrainMat = new THREE.ShaderMaterial({
       else { col*=0.92+0.1*lam; col=mix(col,vec3(0.25,0.27,0.16),gw*0.6); }      // murky water where the sewage signal is high
       if(showSlope>0.5 && sea<0.5){ float s=smoothstep(4.,30.,sl); col=mix(col,mix(vec3(0.36,0.42,0.58),vec3(0.86,0.84,0.92),s),0.18+0.5*s); }
       float o=odour(vUv);
-      col=mix(col,odRamp(o)*0.9,clamp(o*1.3,0.,0.62)*tint);
+      col=mix(col,typeCol(vUv,o)*0.9,clamp(o*1.3,0.,0.62)*tint);
       col=mix(col,fogC,smoothstep(0.,1.,vD/fogD)*0.85);
       gl_FragColor=vec4(col,1.);
       #include <colorspace_fragment>
@@ -222,7 +246,7 @@ const bldReady = (async () => {
       vO=odour(uv);
       float roof=step(0.99,p.y);
       vC=mix(vec3(0.80,0.75,0.66), vec3(0.88,0.84,0.76), roof);
-      vC=mix(vC, odRamp(vO), clamp(vO*1.25,0.,0.85)*(0.55+0.45*roof));
+      vC=mix(vC, typeCol(uv,vO), clamp(vO*1.25,0.,0.85)*(0.55+0.45*roof));
       p=vec3(a1.x+wp.x, a1.y+p.y*a2.z, a1.z+wp.y);`, '');
   bld = new THREE.Mesh(g, m); bld.frustumCulled = false; bld.renderOrder = 1;
   bld.visible = document.getElementById('tBd').checked; world.add(bld);
@@ -251,15 +275,16 @@ const cloudMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, side: THREE.DoubleSide,
   uniforms: { ...uniCommon(), op: { value: S.op }, t: { value: 0 }, lift: { value: 0 }, layerA: { value: 1 }, drift: { value: new THREE.Vector2() }, camP: { value: new THREE.Vector3() } },
   vertexShader: `${COMMON} ${ODOUR_GLSL} uniform float lift; varying float vO;
-    void main(){ vUv=uv; vO=odour(uv); vec3 p=position; p.y+=6.+lift*(0.25+vO*1.6)*1.0; vN=vec3(0.,1.,0.);
+    varying vec3 vT;
+    void main(){ vUv=uv; vO=odour(uv); vT=typeCol(uv,vO); vec3 p=position; p.y+=6.+lift*(0.25+vO*1.6)*1.0; vN=vec3(0.,1.,0.);
       vec4 w=modelMatrix*vec4(p,1.); vW=w.xyz; vec4 mv=viewMatrix*w; vD=-mv.z; gl_Position=projectionMatrix*mv; }`,
-  fragmentShader: `${COMMON} uniform float op,t,fogD,layerA; uniform vec2 drift; uniform vec3 fogC; varying float vO; ${rampGLSL('odR', ODOUR)} ${NOISE}
+  fragmentShader: `${COMMON} uniform float op,t,fogD,layerA; uniform vec2 drift; uniform vec3 fogC; varying float vO; varying vec3 vT; ${rampGLSL('odR', ODOUR)} ${NOISE}
     void main(){
       if(vO<0.012) discard;
       vec2 P=vec2(vW.x,vW.z)/420.;
       float m=fbm(P - drift*t*0.9 + layerA*3.1), m2=fbm(P*2.3 - drift*t*1.6 + 9.2);
       float d=smoothstep(0.012,0.5,vO);
-      vec3 c=odR(clamp(vO*1.15,0.,1.))*(0.9+0.2*m);
+      vec3 c=vT*(0.9+0.2*m);
       float a=op*layerA*d*(0.5+1.1*m*m2);
       c=mix(c,fogC,smoothstep(0.,1.,vD/fogD)*0.8);
       gl_FragColor=vec4(c,clamp(a,0.,0.85));
@@ -279,7 +304,7 @@ function buildCloud() {
 }
 const cloudG = buildCloud(), cloud = new THREE.Group();
 [[8, 0.55], [28, 0.42], [55, 0.3]].forEach(([lift, a], i) => {
-  const m = cloudMat.clone(); m.uniforms = THREE.UniformsUtils.clone(cloudMat.uniforms); m.uniforms.odT.value = odourT;
+  const m = cloudMat.clone(); m.uniforms = THREE.UniformsUtils.clone(cloudMat.uniforms); m.uniforms.odT.value = odourT; m.uniforms.mxT.value = mixT;
   m.uniforms.lift.value = lift; m.uniforms.layerA.value = a; const mesh = new THREE.Mesh(cloudG, m); mesh.renderOrder = 3 + i; cloud.add(mesh);
 });
 world.add(cloud);
@@ -289,14 +314,14 @@ const cloudMats = cloud.children.map(c => c.material);
 const NP = FILM ? 5200 : (LITE ? 1800 : 4200), TRAIL = 16, TIMESCALE = 240;
 const SP = [];      // [lx, ly, r, cumulative weight]
 let wsum = 0;
-for (const s of SRC) { wsum += s.w; SP.push([s.x - 491700, 4266300 - s.y, s.r, wsum, 1]); }
+for (const s of SRC) { wsum += s.w; SP.push([s.x - 491700, 4266300 - s.y, s.r, wsum, s.cat]); }
 const GULF = ST.gulfpts;
 let gulfW = 0;   // set per hour from the air temperature (warm water smells more), as in the model
 function spawn(p) {
   const tot = wsum + gulfW;
   const r = Math.random() * tot;
-  if (r > wsum) { const g = GULF[(Math.random()*GULF.length)|0]; p.x = g[0] + (Math.random()-0.5)*60; p.y = g[1] + (Math.random()-0.5)*60; p.g = 1; }
-  else { const s = SP.find(s => s[3] >= r); const a = Math.random()*6.283, d = s[2]*Math.sqrt(Math.random()); p.x = s[0] + Math.cos(a)*d; p.y = s[1] + Math.sin(a)*d; p.g = 0; }
+  if (r > wsum) { const g = GULF[(Math.random()*GULF.length)|0]; p.x = g[0] + (Math.random()-0.5)*60; p.y = g[1] + (Math.random()-0.5)*60; p.g = 0; }
+  else { const s = SP.find(s => s[3] >= r); const a = Math.random()*6.283, d = s[2]*Math.sqrt(Math.random()); p.x = s[0] + Math.cos(a)*d; p.y = s[1] + Math.sin(a)*d; p.g = s[4]; }
   p.age = 0; p.life = 4 + Math.random()*5; p.tr = [];
 }
 const parts = Array.from({ length: NP }, () => { const p = {}; spawn(p); p.age = Math.random()*p.life; return p; });
@@ -313,7 +338,7 @@ const pMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, un
     #include <colorspace_fragment>
   }` });
 const pts = new THREE.Points(pGeo, pMat); pts.frustumCulled = false; pts.renderOrder = 7; world.add(pts);
-const PC = hex('#f6ec9e'), PG = hex('#d9bf4e');
+const PCOL = TYPES.map(t => hex(t.c).lerp(hex('#ffffff'), 0.18));
 function stepParticles(dt) {
   for (let j = 0; j < NP; j++) {
     const p = parts[j]; p.age += dt;
@@ -328,7 +353,7 @@ function stepParticles(dt) {
   let o = 0;
   for (let j = 0; j < NP; j++) {
     const p = parts[j], fade = Math.min(1, p.age/0.7, (p.life - p.age)/1.2);
-    const c = p.g ? PG : PC;
+    const c = PCOL[p.g || 0];
     for (let s = 0; s < TRAIL; s++, o++) {
       const a = p.tr[s];
       if (!a) { pCol[o*4+3] = 0; pSize[o] = 0; continue; }
@@ -347,7 +372,16 @@ const SHORT = { 'Çiğli Atıksu Arıtma Tesisi': L('Çiğli wastewater plant', 
 const LABELS = ST.labels.map(([t, lx, ly, cls]) => ({ t: cls === 'water' && !TR ? (t === 'İzmir Körfezi' ? 'Gulf of İzmir' : 'Inner gulf') : t, lx, ly, cls, z: 40 }));
 for (const s of SRC) if (s.w >= 0.3) LABELS.push({ t: SHORT[s.name] || s.name.replace(' ağzı', ''), lx: s.x - 491700, ly: 4266300 - s.y, cls: 'src', z: 20, src: 1, minor: !SHORT[s.name] });
 const lblBox = document.getElementById('labels');
-for (const l of LABELS) { l.d = document.createElement('div'); l.d.className = 'lbl ' + l.cls; l.d.textContent = l.t; lblBox.appendChild(l.d); }
+for (const l of LABELS) if (l.src) { const s = SRC.find(x => x.x - 491700 === l.lx && 4266300 - x.y === l.ly); l.cat = s.cat; l.w = s.w; }
+const lgMax = Math.max(...ST.stations.map(s => s.lg)), lgMin = Math.min(...ST.stations.map(s => s.lg));
+for (const st of ST.stations) LABELS.push({ t: '', lx: st.x, ly: st.y, cls: 'src st', z: 5, src: 1, cat: 0, w: 0.35 + 0.65*(st.lg - lgMin)/(lgMax - lgMin),
+  tip: `${st.n.replace(/^\d+- /, '')} · ${L('median faecal coliform / E. coli', 'fekal koliform / E. coli medyanı')} ${Math.round(10**st.lg)} /100 ml`, minor: true });
+for (const l of LABELS) {
+  l.d = document.createElement('div'); l.d.className = 'lbl ' + l.cls;
+  if (l.src) { const sz = Math.round(13 + 13*Math.min(1, l.w)); l.d.innerHTML = `<span class="badge" style="width:${sz+6}px;height:${sz+6}px">${icon(l.cat, sz)}</span>${l.t ? `<span>${l.t}</span>` : ''}`; if (l.tip) l.d.title = l.tip; }
+  else l.d.textContent = l.t;
+  lblBox.appendChild(l.d);
+}
 const _v = new THREE.Vector3();
 let showSrc = true;
 function placeLabels() {
@@ -369,13 +403,12 @@ function roseSVG() {
   return s + `<text y="-${R+5}" text-anchor="middle" font-size="9" fill="#aab0be">N</text></svg>`;
 }
 document.getElementById('legend').innerHTML = `
-  <h4>${L('Odour index (scenario)', 'Koku indeksi (senaryo)')}</h4>
-  <div class="ramp"></div>
+  <h4>${L('Odour cloud · by source', 'Koku bulutu · kaynağa göre')}</h4>
+  ${TYPES.map((t, i) => `<div class="lg-row">${icon(i)}<i class="sw" style="background:${t.c}"></i>${L(t.en, t.tr)}</div>`).join('')}
+  <div class="ramp grey"></div>
   <div class="tick mono"><span>${L('faint', 'hafif')}</span><span>${L('noticeable', 'belirgin')}</span><span>${L('strong', 'güçlü')}</span></div>
-  <div class="lg-row"><i class="dot" style="background:#e3c44a"></i>${L('Candidate odour source', 'Olası koku kaynağı')}</div>
+  <div class="lg-row" style="color:var(--ink-3)">${L('Bigger symbol = stronger source', 'Büyük sembol = güçlü kaynak')}</div>
   <div class="lg-row"><i class="sw" style="background:#2c3a2e"></i>${L('Murky water: sewage signal in the gulf', 'Bulanık su: körfezde kanalizasyon izi')}</div>
-  <div class="lg-row"><i class="sw" style="background:#d6cdbb"></i>${L('Buildings · tinted inside the cloud', 'Binalar · bulut içindeyse renklenir')}</div>
-  <div class="lg-row"><i class="sw" style="background:#2f5a3c"></i>${L('Trees', 'Ağaçlar')}</div>
   <h4 style="margin-top:10px">${L('Where the wind comes from · year', 'Rüzgârın geldiği yön · yıl')}</h4>${roseSVG()}`;
 
 // ---------- camera ----------
@@ -458,6 +491,15 @@ function drawChart() {
   $('rank').querySelectorAll('li').forEach(li => li.onclick = () => { const m = top[+li.dataset.i]; const k = MAH.find(x => x.n === m.n && x.c[0] === m.c[0]) || m; flyTo(k.c[0], k.c[1]); });
 }
 
+// sources and their strength (per day)
+function drawSources() {
+  const d = ST.days[S.day] && ST.days[S.day][S.scen]; if (!d) return;
+  const R = d.released_by_type, O = d.share_by_type, pc = v => `${Math.round(v*100)}%`;
+  $('srcs').innerHTML = TYPES.map((t, i) => `<li>${icon(i, 18)}<span>${L(t.en, t.tr)}</span>
+    <div class="bars"><i style="width:${(R[i]*100).toFixed(0)}%;background:${t.c};opacity:.45"></i><i style="width:${(O[i]*100).toFixed(0)}%;background:${t.c}"></i></div>
+    <b class="mono">${pc(O[i])}</b></li>`).join('');
+}
+
 // districts
 {
   const D = ST.districts, mx = D[0].h;
@@ -487,7 +529,10 @@ function showDetail(p) {
     <div class="row"><span>${L('Odour hours this day', 'Bu gün koku saati')}</span><b class="mono">${hrs} / 24</b></div>
     <div class="strip">${strip.map(v => `<i style="background:${v < 0.03 ? 'rgba(255,255,255,.06)' : '#' + rampJS(Math.min(1, v*1.15)).getHexString()};opacity:${v < 0.03 ? 1 : (0.25 + 0.75*Math.min(1, v/ST.grid.threshold)).toFixed(2)}"></i>`).join('')}</div>
     <div class="sk mono"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
-    ${now >= 0.03 ? `<div class="row"><span>${L('From the gulf &amp; stream mouths', 'Körfez ve dere ağızlarından')}</span><b class="mono">${Math.round(gulfShareAt(p.lx, p.ly, S.h)*100)}%</b></div>` : ''}
+    ${now >= 0.03 ? (() => { const sh = sharesAt(p.lx, p.ly, S.h), tot = sh.reduce((a, b) => a + b, 0) || 1;
+      return `<div class="row"><span>${L('Where this smell comes from', 'Bu koku nereden geliyor')}</span></div>
+      <div class="mixbar">${sh.map((v, i) => v/tot > 0.005 ? `<i style="flex:${(v/tot).toFixed(3)};background:${TYPES[i].c}" title="${L(TYPES[i].en, TYPES[i].tr)}"></i>` : '').join('')}</div>
+      <div class="mixkey">${sh.map((v, i) => v/tot >= 0.05 ? `<span>${icon(i, 13)} ${Math.round(v/tot*100)}%</span>` : '').join('')}</div>`; })() : ''}
     <div class="row"><span>${L('Wind here now', 'Burada rüzgâr')}</span><b class="mono">${ws.toFixed(1)} m/s → ${COMPASS[Math.round(((toward%360)+360)%360/45)%8]}</b></div>
     <div class="row"><span>${L('Ground', 'Zemin')}</span><b class="mono">${Math.round(groundAt(p.lx, p.ly))} m</b></div>
     ${m && m.b ? `<div class="row"><span>${L('Neighbourhood, 12-day average', 'Mahalle, 12 gün ortalaması')}</span><b class="mono">${m.h.toFixed(1)} ${L('h/day', 'sa/gün')}</b></div>` : ''}
@@ -496,7 +541,7 @@ function showDetail(p) {
 let downAt = null;
 canvas.addEventListener('pointerdown', e => downAt = [e.clientX, e.clientY]);
 canvas.addEventListener('pointerup', e => { if (!downAt || Math.hypot(e.clientX-downAt[0], e.clientY-downAt[1]) > 5) return; const p = pick(e); if (p) showDetail(p); });
-function onDay() { setHour(S.h); if (lastPick) showDetail(lastPick); }
+function onDay() { setHour(S.h); drawSources(); if (lastPick) showDetail(lastPick); }
 
 // ---------- loop ----------
 let lastDetail = 0;
